@@ -1,0 +1,25 @@
+modLoader="javafml"
+loaderVersion="[36,)"
+license="MIT"
+[[mods]]
+modId="physicscontrol"
+version="${file.jarVersion}"
+displayName="Physics Control"
+logoFile="physicscontrol_icon.png"
+authors="shBLOCK"
+description='''
+physics
+'''
+
+[[dependencies.physicscontrol]]
+    modId="forge"
+    mandatory=true
+    versionRange="[36,)"
+    ordering="NONE"
+    side="BOTH"
+[[dependencies.physicscontrol]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.16.5,1.17)"
+    ordering="NONE"
+    side="BOTH"
