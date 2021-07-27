@@ -13,8 +13,8 @@ apply plugin: 'eclipse'
 apply plugin: 'maven-publish'
 
 version = '1.0'
-group = 'com.yourname.modid' // http://maven.apache.org/guides/mini/guide-naming-conventions.html
-archivesBaseName = 'modid'
+group = 'com.shblock.physicscontrol' // http://maven.apache.org/guides/mini/guide-naming-conventions.html
+archivesBaseName = 'PhysicsControl'
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(8) // Mojang ships Java 8 to end users, so your mod should target Java 8.
 
@@ -129,6 +129,10 @@ repositories {
     jcenter()
 }
 
+ext {
+    imguiVersion = "1.83.3"
+}
+
 dependencies {
     // Specify the version of Minecraft to use, If this is any group other then 'net.minecraft' it is assumed
     // that the dep is a ForgeGradle 'patcher' dependency. And it's patches will be applied.
@@ -153,30 +157,30 @@ dependencies {
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
 
-    //JBox2D
+    //Box2D
     implementation name: "jbox2d-library"
 
-//    //JBullet
-//    implementation name: "jbullet"
-//    implementation name: "vecmath"
-//    implementation name: "stack-alloc"
-
-//    compile 'com.badlogicgames.gdx:gdx-bullet:1.9.10'
-//    compile 'com.badlogicgames.gdx:gdx-bullet-platform:1.9.10:natives-desktop'
-
+    //Bullet
     implementation 'com.github.stephengold:Libbulletjme:10.5.0'
+
+    //ImGUI
+    implementation "io.github.spair:imgui-java-binding:$imguiVersion"
+    implementation "io.github.spair:imgui-java-lwjgl3:$imguiVersion"
+    implementation "io.github.spair:imgui-java-natives-windows-ft:$imguiVersion"
+    implementation "io.github.spair:imgui-java-natives-linux-ft:$imguiVersion"
+    implementation "io.github.spair:imgui-java-natives-macos-ft:$imguiVersion"
 }
 
 // Example for how to get properties into the manifest for reading by the runtime..
 jar {
     manifest {
         attributes([
-            "Specification-Title": "examplemod",
-            "Specification-Vendor": "examplemodsareus",
+            "Specification-Title": "Physics Control",
+            "Specification-Vendor": "physicscontrolsareus",
             "Specification-Version": "1", // We are version 1 of ourselves
             "Implementation-Title": project.name,
             "Implementation-Version": "${version}",
-            "Implementation-Vendor" :"examplemodsareus",
+            "Implementation-Vendor" :"physicscontrolsareus",
             "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
         ])
     }

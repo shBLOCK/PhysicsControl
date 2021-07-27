@@ -43,7 +43,7 @@ public class BulletNativeHandler {
             throw new RuntimeException("Failed to extract native libraries for bullet physics engine, please report this to PhysicsControl's github!");
         }
 
-        if (!NativeLibraryLoader.loadLibbulletjme(true, dest.toFile(), "Release", "Dp")) {
+        if (!NativeLibraryLoader.loadLibbulletjme(true, dest.toFile(), "Release", "Dp")) { //TODO: make Dp or Sp a config option in config file
             throw new RuntimeException("Failed to load native libraries for bullet physics engine, please report this to PhysicsControl's github!");
         } else {
             PhysicsControl.log("Bullet native libraries loaded");
