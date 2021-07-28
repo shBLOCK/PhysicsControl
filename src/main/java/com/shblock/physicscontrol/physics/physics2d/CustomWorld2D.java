@@ -2,6 +2,7 @@ package com.shblock.physicscontrol.physics.physics2d;
 
 import com.jme3.bullet.PhysicsSpace;
 import com.jme3.bullet.SolverType;
+import com.jme3.bullet.collision.PhysicsCollisionObject;
 import com.shblock.physicscontrol.physics.math.Vector2f;
 
 public class CustomWorld2D extends PhysicsSpace {
@@ -13,5 +14,13 @@ public class CustomWorld2D extends PhysicsSpace {
         return new CustomWorld2D(worldMin, worldMax, BroadphaseType.DBVT, SolverType.SI); //TODO: choose BroadphaseType and SolverType through config file
     }
 
+    @Override
+    public void add(Object object) {
+        super.add(object);
+    }
 
+    @Override
+    public void addCollisionObject(PhysicsCollisionObject pco) {
+        super.addCollisionObject(pco);
+    }
 }
