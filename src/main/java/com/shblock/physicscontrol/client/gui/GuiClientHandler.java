@@ -5,6 +5,6 @@ import net.minecraft.util.text.StringTextComponent;
 
 public class GuiClientHandler {
     public static void openPhysicsSimulatorGui() {
-        Minecraft.getInstance().setScreen(new ImGuiBase(new StringTextComponent("imgui-test")));
+        Minecraft.getInstance().setScreen(new GuiPhysicsSimulator(new StringTextComponent("imgui-test")));
     }
 }

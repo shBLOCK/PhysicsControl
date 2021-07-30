@@ -1,5 +1,6 @@
 package com.shblock.physicscontrol;
 
+import com.shblock.physicscontrol.client.gui.GlobalImGuiRenderer;
 import com.shblock.physicscontrol.item.ItemPhysicsSimulator;
 import com.shblock.physicscontrol.proxy.ClientProxy;
 import com.shblock.physicscontrol.proxy.CommonProxy;
@@ -12,6 +13,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.IForgeRegistry;
 import org.apache.logging.log4j.Level;
@@ -29,6 +31,7 @@ public class PhysicsControl {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         modEventBus.addListener(this::onCommonSetup);
         modEventBus.addListener(this::onClientSetup);
+//        modEventBus.addListener(this::onLoadComplete);
     }
 
     private void onCommonSetup(final FMLCommonSetupEvent event) {
@@ -38,6 +41,11 @@ public class PhysicsControl {
     private void onClientSetup(final FMLClientSetupEvent event) {
         ClientProxy.setup();
     }
+
+//    private void onLoadComplete(final FMLLoadCompleteEvent event) {
+//        log("Initializing GlobalImGuiRenderer...");
+//        GlobalImGuiRenderer.getInstance(); //To init GlobalImGuiRenderer's instance, not really to get it.
+//    }
 
     public static void log(String message) {
         LOGGER.log(Level.INFO, message);
