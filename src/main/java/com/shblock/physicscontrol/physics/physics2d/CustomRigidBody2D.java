@@ -28,6 +28,7 @@ public class CustomRigidBody2D extends PhysicsRigidBody {
     public void init2D() {
         setLinearFactor(new Vector3f(1f, 1f, 0f));
         setAngularFactor(new Vector3f(1f, 0f, 0f));
+        setPhysicsScale(new Vector3f(1f, 1f, 0f));
     }
 
     // *************************************************************************
