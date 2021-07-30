@@ -1,6 +1,7 @@
 package com.shblock.physicscontrol.client.gui;
 
 import com.mojang.blaze3d.matrix.MatrixStack;
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.shblock.physicscontrol.PhysicsControl;
 import imgui.*;
 import imgui.callback.ImStrConsumer;
@@ -54,12 +55,6 @@ public class ImGuiBase extends Screen {
     protected ImGuiBase(ITextComponent p_i51108_1_) {
         super(p_i51108_1_);
         MinecraftForge.EVENT_BUS.register(this);
-//        if (!initialized) {
-//            initImGui();
-//            initialized = true;
-//        } else {
-//            ImGui.createContext();
-//        }
         initImGui();
     }
 
@@ -179,20 +174,6 @@ public class ImGuiBase extends Screen {
         int button = event.getButton();
         int action = event.getAction();
 
-//        final boolean[] mouseDown = new boolean[5];
-//
-//        mouseDown[0] = button == GLFW_MOUSE_BUTTON_1 && action != GLFW_RELEASE;
-//        mouseDown[1] = button == GLFW_MOUSE_BUTTON_2 && action != GLFW_RELEASE;
-//        mouseDown[2] = button == GLFW_MOUSE_BUTTON_3 && action != GLFW_RELEASE;
-//        mouseDown[3] = button == GLFW_MOUSE_BUTTON_4 && action != GLFW_RELEASE;
-//        mouseDown[4] = button == GLFW_MOUSE_BUTTON_5 && action != GLFW_RELEASE;
-//
-//        io.setMouseDown(mouseDown);
-//
-//        if (!io.getWantCaptureMouse() && mouseDown[1]) {
-//            ImGui.setWindowFocus(null);
-//        }
-
         imGuiGlfw.mouseButtonCallback(windowPtr, button, action, event.getMods());
 
         if (io.getWantCaptureMouse()) {
@@ -204,9 +185,6 @@ public class ImGuiBase extends Screen {
     //call ImGui's handler, have to do it this way because mc's handler method has private access
     @SubscribeEvent
     public void onMouseScrollEvent(final GuiScreenEvent.MouseScrollEvent.Pre event) {
-//        io.setMouseWheelH(io.getMouseWheelH() + (float) event.getScrollDelta());
-//        io.setMouseWheel(io.getMouseWheel() + (float) event.getScrollDelta());
-
         if (!this.initialized) {
             return;
         }
@@ -223,13 +201,13 @@ public class ImGuiBase extends Screen {
             return;
         }
 
-        super.render(matrixStack, combinedLight, combinedOverlay, particleTick);
-
-        // Any Dear ImGui code SHOULD go between ImGui.newFrame()/ImGui.render() methods
+        matrixStack.pushPose();
+        matrixStack.translate(10, 0, 100);
         startFrame();
-//        setupDockspace();
+        setupDockspace();
         ImGui.showDemoWindow();
         endFrame();
+        matrixStack.popPose();
     }
 
     @Override
@@ -263,33 +241,57 @@ public class ImGuiBase extends Screen {
     }
 
     private void setupDockspace() {
-        MainWindow window = mc.getWindow();
+        MainWindow mc_window = mc.getWindow();
         int windowFlags = ImGuiWindowFlags.MenuBar | ImGuiWindowFlags.NoDocking;
 
-        ImGuiViewport mainViewport = ImGui.getMainViewport();
-        ImGui.setNextWindowPos(mainViewport.getWorkPosX(), mainViewport.getWorkPosY());
-        ImGui.setNextWindowSize(mainViewport.getWorkSizeX(), mainViewport.getWorkSizeY());
-        ImGui.setNextWindowViewport(mainViewport.getID());
-        ImGui.setNextWindowPos(0.0f, 0.0f);
-        ImGui.setNextWindowSize(window.getScreenWidth(), window.getScreenHeight());
-        ImGui.pushStyleVar(ImGuiStyleVar.WindowRounding, 0.0f);
-        ImGui.pushStyleVar(ImGuiStyleVar.WindowBorderSize, 0.0f);
-        windowFlags |= ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse |
-                ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
-                ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoNavFocus;
+        ImGuiViewport mainViewPort = ImGui.getMainViewport();
+        ImGui.setNextWindowPos(mainViewPort.getWorkPosX(), mainViewPort.getWorkPosY());
+        ImGui.setNextWindowSize(mainViewPort.getWorkSizeX(), mainViewPort.getWorkSizeY());
+        ImGui.setNextWindowViewport(mainViewPort.getID());
+        ImGui.setNextWindowPos(0f, 0f, ImGuiCond.Always);
+        ImGui.setNextWindowSize(mc_window.getScreenWidth(), mc_window.getScreenHeight());
+        ImGui.pushStyleVar(ImGuiStyleVar.WindowRounding, 0f);
+        ImGui.pushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
+        windowFlags |= ImGuiWindowFlags.NoTitleBar |
+                ImGuiWindowFlags.NoCollapse |
+                ImGuiWindowFlags.NoResize |
+                ImGuiWindowFlags.NoMove |
+                ImGuiWindowFlags.NoBringToFrontOnFocus |
+                ImGuiWindowFlags.NoNavFocus;
 
-        ImGui.begin("Dockspace Demo", new ImBoolean(true), windowFlags);
+        ImGui.begin("Dockspace", new ImBoolean(true), windowFlags);
         ImGui.popStyleVar(2);
 
-        // Dockspace
         ImGui.dockSpace(ImGui.getID("Dockspace"));
 
-//        menuBar.imgui();
-
         ImGui.end();
+
+//        MainWindow window = mc.getWindow();
+//        int windowFlags = ImGuiWindowFlags.MenuBar | ImGuiWindowFlags.NoDocking;
+//
+//        ImGuiViewport mainViewport = ImGui.getMainViewport();
+//        ImGui.setNextWindowPos(mainViewport.getWorkPosX(), mainViewport.getWorkPosY());
+//        ImGui.setNextWindowSize(mainViewport.getWorkSizeX(), mainViewport.getWorkSizeY());
+//        ImGui.setNextWindowViewport(mainViewport.getID());
+//        ImGui.setNextWindowPos(0.0f, 0.0f);
+//        ImGui.setNextWindowSize(window.getScreenWidth(), window.getScreenHeight());
+//        ImGui.pushStyleVar(ImGuiStyleVar.WindowRounding, 0.0f);
+//        ImGui.pushStyleVar(ImGuiStyleVar.WindowBorderSize, 0.0f);
+//        windowFlags |= ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse |
+//                ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
+//                ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoNavFocus;
+//
+//        ImGui.begin("Dockspace Demo", new ImBoolean(true), windowFlags);
+//        ImGui.popStyleVar(2);
+//
+//        // Dockspace
+//        ImGui.dockSpace(ImGui.getID("Dockspace"));
+//
+////        menuBar.imgui();
+//
+//        ImGui.end();
     }
 
-    // If you want to clean a room after yourself - do it by yourself
     private void destroyImGui() {
         if (!this.initialized) { //just to make sure
             return;
