@@ -4,10 +4,13 @@ import com.jme3.bounding.BoundingBox;
 import com.jme3.bullet.collision.shapes.CollisionShape;
 import com.jme3.bullet.objects.PhysicsRigidBody;
 import com.jme3.math.Vector3f;
-import com.shblock.physicscontrol.physics.math.BoundingBox2D;
-import com.shblock.physicscontrol.physics.math.MyVector2f;
-import com.shblock.physicscontrol.physics.math.QuaternionUtil;
-import com.shblock.physicscontrol.physics.math.Vector2f;
+import com.shblock.physicscontrol.physics.util.BoundingBox2D;
+import com.shblock.physicscontrol.physics.util.MyVector2f;
+import com.shblock.physicscontrol.physics.util.QuaternionUtil;
+import com.shblock.physicscontrol.physics.util.Vector2f;
+import jme3utilities.Validate;
+import net.minecraft.nbt.INBT;
+import net.minecraftforge.common.util.INBTSerializable;
 
 import javax.annotation.Nullable;
 
@@ -32,24 +35,6 @@ public class CustomRigidBody2D extends PhysicsRigidBody {
     }
 
     // *************************************************************************
-    // Util methods
-
-    /**
-     * Store <code>Vector3f</code>'s x and y value to a <code>Vector2f</code> object and return it.
-     * @param result <code>Vector3f</code> object to store from.
-     * @param storeResult <code>Vector2f</code> object to store to (can be null).
-     * @return the stored <code>Vector2f</code> object, or a new object if storeResult is null
-     */
-    private Vector2f storeToVec2(Vector3f result, @Nullable Vector2f storeResult) {
-        if (storeResult == null) {
-            storeResult = new Vector2f();
-        }
-        storeResult.x = result.x;
-        storeResult.y = result.y;
-        return storeResult;
-    }
-
-    // *************************************************************************
     // PhysicsCollisionObject
 
     public BoundingBox2D boundingBox(BoundingBox2D storeResult) {
@@ -61,12 +46,12 @@ public class CustomRigidBody2D extends PhysicsRigidBody {
         return storeResult;
     }
 
-    public Vector2f getAnisotropicFriction(Vector2f storeResult) {
-        return storeToVec2(super.getAnisotropicFriction(null), storeResult);
-    }
+//    public Vector2f getAnisotropicFriction(Vector2f storeResult) { //TODO: is z=0 okay?
+//        return MyVector2f.storeToVec2(super.getAnisotropicFriction(null), storeResult);
+//    }
 
     public Vector2f getPhysicsLocation(Vector2f storeResult) {
-        return storeToVec2(super.getPhysicsLocation(null), storeResult);
+        return MyVector2f.storeToVec2(super.getPhysicsLocation(null), storeResult);
     }
 
     public double getPhysicsRotation() {
@@ -74,12 +59,12 @@ public class CustomRigidBody2D extends PhysicsRigidBody {
     }
 
     public Vector2f getScale(Vector2f storeResult) {
-        return storeToVec2(super.getScale(null), storeResult);
+        return MyVector2f.storeToVec2(super.getScale(null), storeResult);
     }
 
-    public void setAnisotropicFriction(Vector2f components, int mode) {
-        super.setAnisotropicFriction(components.toVec3(), mode);
-    }
+//    public void setAnisotropicFriction(Vector2f components, int mode) { //TODO: is z=0 okay?
+//        super.setAnisotropicFriction(components.toVec3(), mode);
+//    }
 
     public void setLocationAndBasis(Vector2f centerLocation, double radians) {
         super.setLocationAndBasis(centerLocation.toVec3(), QuaternionUtil.setXRadians(null, radians).toRotationMatrix());
@@ -124,20 +109,20 @@ public class CustomRigidBody2D extends PhysicsRigidBody {
         return super.getAngularVelocityLocal(null).getX();
     }
 
-    public Vector2f getInverseInertiaLocal(Vector2f storeResult) {
-        return storeToVec2(super.getInverseInertiaLocal(null), storeResult);
-    }
+//    public Vector2f getInverseInertiaLocal(Vector2f storeResult) { //TODO: check this
+//        return MyVector2f.storeToVec2(super.getInverseInertiaLocal(null), storeResult);
+//    }
 
 //    public Matrix3f getInverseInertiaWorld(Matrix3f storeResult) { //TODO: Convert to 2D?
 //        return super.getInverseInertiaWorld(storeResult);
 //    }
 
     public Vector2f getLinearFactor(Vector2f storeResult) {
-        return storeToVec2(super.getLinearFactor(null), storeResult);
+        return MyVector2f.storeToVec2(super.getLinearFactor(null), storeResult);
     }
 
     public Vector2f getLinearVelocity(Vector2f storeResult) {
-        return storeToVec2(super.getLinearVelocity(null), storeResult);
+        return MyVector2f.storeToVec2(super.getLinearVelocity(null), storeResult);
     }
 
     @Override
@@ -147,7 +132,7 @@ public class CustomRigidBody2D extends PhysicsRigidBody {
         double mv2 = mass * getSquaredSpeed();
 
         double xx = getAngularVelocityLocal();
-        Vector2f invI = getInverseInertiaLocal((Vector2f) null);
+        Vector2f invI = new Vector2f(getInverseInertiaLocal(null)); //TODO: check this
         double iw2 = xx * xx / invI.x;
 
         double result = (mv2 + iw2) / 2.0;
@@ -171,9 +156,13 @@ public class CustomRigidBody2D extends PhysicsRigidBody {
         setAngularFactor(new Vector3f(factor, 0f, 0f));
     }
 
-    public void setInverseInertiaLocal(Vector2f inverseInertia) {
-        super.setInverseInertiaLocal(inverseInertia.toVec3());
+    public void setAngularVelocity(float omega) {
+        super.setAngularVelocity(new Vector3f(omega, 0f, 0f));
     }
+
+//    public void setInverseInertiaLocal(Vector2f inverseInertia) { //TODO: check this
+//        super.setInverseInertiaLocal(inverseInertia.toVec3());
+//    }
 
     public void setLinearFactor(Vector2f factor) {
         super.setLinearFactor(factor.toVec3());
@@ -192,7 +181,7 @@ public class CustomRigidBody2D extends PhysicsRigidBody {
     }
 
     public Vector2f totalAppliedForce(Vector2f storeResult) {
-        return storeToVec2(super.totalAppliedForce(null), storeResult);
+        return MyVector2f.storeToVec2(super.totalAppliedForce(null), storeResult);
     }
 
     public float totalAppliedTorque() {
@@ -200,7 +189,7 @@ public class CustomRigidBody2D extends PhysicsRigidBody {
     }
 
     public Vector2f getGravity(Vector2f storeResult) {
-        return storeToVec2(super.getGravity(null), storeResult);
+        return MyVector2f.storeToVec2(super.getGravity(null), storeResult);
     }
 
     public void setGravity(Vector2f acceleration) {

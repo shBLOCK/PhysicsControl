@@ -1,7 +1,10 @@
-package com.shblock.physicscontrol.physics.math;
+package com.shblock.physicscontrol.physics.util;
 
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
+import net.minecraft.nbt.FloatNBT;
+import net.minecraft.nbt.ListNBT;
+import net.minecraftforge.common.util.INBTSerializable;
 
 import java.util.logging.Logger;
 

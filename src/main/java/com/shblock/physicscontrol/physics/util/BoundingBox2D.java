@@ -1,4 +1,4 @@
-package com.shblock.physicscontrol.physics.math;
+package com.shblock.physicscontrol.physics.util;
 
 import com.jme3.bounding.BoundingBox;
 import com.jme3.math.FastMath;

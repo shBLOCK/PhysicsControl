@@ -1,8 +1,10 @@
-package com.shblock.physicscontrol.physics.math;
+package com.shblock.physicscontrol.physics.util;
 
+import com.jme3.math.Vector3f;
 import jme3utilities.Validate;
 import jme3utilities.math.MyMath;
 
+import javax.annotation.Nullable;
 import java.util.logging.Logger;
 
 /**
@@ -284,5 +286,20 @@ public class MyVector2f {
         result.y = MyMath.standardize(input.y);
 
         return result;
+    }
+
+    /**
+     * Store <code>Vector3f</code>'s x and y value to a <code>Vector2f</code> object and return it.
+     * @param result <code>Vector3f</code> object to store from.
+     * @param storeResult <code>Vector2f</code> object to store to (can be null).
+     * @return the stored <code>Vector2f</code> object, or a new object if storeResult is null
+     */
+    public static Vector2f storeToVec2(Vector3f result, @Nullable Vector2f storeResult) {
+        if (storeResult == null) {
+            storeResult = new Vector2f();
+        }
+        storeResult.x = result.x;
+        storeResult.y = result.y;
+        return storeResult;
     }
 }

@@ -18,6 +18,7 @@ public class GuiPhysicsSimulator extends ImGuiBase {
 
     @Override
     public void render(MatrixStack matrixStack, int combinedLight, int combinedOverlay, float particleTick) {
+        super.render(matrixStack, combinedLight, combinedOverlay, particleTick);
         matrixStack.pushPose();
         renderComponentTooltip(matrixStack, Lists.newArrayList(new StringTextComponent("etxtextextetxettxtetextetxtetxetxtexe"), new StringTextComponent("dgyafsuafgsyfdgsydfgsdygfs"), new StringTextComponent("1234567899764")), combinedLight, combinedOverlay);
         matrixStack.popPose();

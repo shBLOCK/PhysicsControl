@@ -6,6 +6,7 @@ import com.shblock.physicscontrol.proxy.ClientProxy;
 import com.shblock.physicscontrol.proxy.CommonProxy;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
+import net.minecraftforge.client.event.ParticleFactoryRegisterEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -31,7 +32,7 @@ public class PhysicsControl {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         modEventBus.addListener(this::onCommonSetup);
         modEventBus.addListener(this::onClientSetup);
-//        modEventBus.addListener(this::onLoadComplete);
+        modEventBus.addListener(this::initImGuiRenderer);
     }
 
     private void onCommonSetup(final FMLCommonSetupEvent event) {
@@ -42,10 +43,11 @@ public class PhysicsControl {
         ClientProxy.setup();
     }
 
-//    private void onLoadComplete(final FMLLoadCompleteEvent event) {
-//        log("Initializing GlobalImGuiRenderer...");
-//        GlobalImGuiRenderer.getInstance(); //To init GlobalImGuiRenderer's instance, not really to get it.
-//    }
+    //Because this event posted closest to GL.createCapabilities(), and is the only stable one
+    private void initImGuiRenderer(final ParticleFactoryRegisterEvent event) {
+        log("Initializing GlobalImGuiRenderer...");
+        GlobalImGuiRenderer.tryInitInstance();
+    }
 
     public static void log(String message) {
         LOGGER.log(Level.INFO, message);

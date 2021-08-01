@@ -17,14 +17,12 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModList;
 import org.apache.logging.log4j.Level;
-import org.lwjgl.opengl.GL30;
 
 import java.io.File;
 import java.nio.file.Path;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.glfw.GLFW.glfwGetClipboardString;
-import static org.lwjgl.opengl.GL30.GL_FRAMEBUFFER;
 
 public class GlobalImGuiRenderer {
     private static Minecraft mc;
@@ -68,7 +66,6 @@ public class GlobalImGuiRenderer {
 
         io = ImGui.getIO();
         io.setIniFilename(null); // We don't want to save .ini file
-//        io.addConfigFlags(ImGuiConfigFlags.NavEnableKeyboard);
         io.addConfigFlags(ImGuiConfigFlags.DockingEnable);
         io.addConfigFlags(ImGuiConfigFlags.ViewportsEnable);
         io.setBackendPlatformName("imgui_java_impl_glfw");
@@ -88,10 +85,8 @@ public class GlobalImGuiRenderer {
                 io.setKeyShift(io.getKeysDown(GLFW_KEY_LEFT_SHIFT) || io.getKeysDown(GLFW_KEY_RIGHT_SHIFT));
                 io.setKeyAlt(io.getKeysDown(GLFW_KEY_LEFT_ALT) || io.getKeysDown(GLFW_KEY_RIGHT_ALT));
                 io.setKeySuper(io.getKeysDown(GLFW_KEY_LEFT_SUPER) || io.getKeysDown(GLFW_KEY_RIGHT_SUPER));
-            } else {
-                io.setWantCaptureKeyboard(false);
             }
-            if (!io.getWantCaptureKeyboard()) {
+            if (!isImGuiOpened() || !io.getWantCaptureKeyboard()) {
                 mc.execute(() -> mc.keyboardHandler.keyPress(w, key, scancode, action, mods)); // if ImGui didn't use the event, call mc's key handler
             }
         });
@@ -108,7 +103,7 @@ public class GlobalImGuiRenderer {
         glfwSetMonitorCallback((windowId, event) -> {
             if (isImGuiOpened()) {
                 imGuiGlfw.monitorCallback(windowId, event);
-                //TODO: add mc's MonitorHandler.onMonitorChange() callback function back
+                //TODO: add mc's MonitorHandler.onMonitorChange() callback function back?
             }
         });
 
@@ -132,11 +127,12 @@ public class GlobalImGuiRenderer {
         });
 
         final ImFontAtlas fontAtlas = io.getFonts();
-        final ImFontConfig fontConfig = new ImFontConfig();
-        // Glyphs could be added per-font as well as per config used globally like here
-        fontConfig.setGlyphRanges(fontAtlas.getGlyphRangesChineseSimplifiedCommon());
-        fontConfig.setPixelSnapH(true);
 
+        short[] glyphRanges = {0x1, Short.MAX_VALUE, 0};
+
+        ImFontConfig fontConfig = new ImFontConfig();
+        fontConfig.setPixelSnapH(true);
+        fontConfig.setGlyphRanges(glyphRanges);
         String default_font_path = FONTS_PATH.resolve(DEFAULT_FONT_NAME).toString();
         fontAtlas.addFontFromFileTTF(default_font_path, 16, fontConfig);
         fontAtlas.addFontFromFileTTF(default_font_path, 8, fontConfig);
@@ -206,18 +202,7 @@ public class GlobalImGuiRenderer {
     }
 
     @SubscribeEvent
-    public void render(GuiScreenEvent.DrawScreenEvent.Post event) {
-        if (isImGuiOpened()) {
-            this.needClose = true;
-            startFrame();
-            getCurrentImGuiScreen().buildImGui();
-            setupDockspace();
-            endFrame();
-        }
-    }
-
-    @SubscribeEvent
-    public void onWorldRender(RenderGameOverlayEvent event) {
+    public void onWorldRender(RenderGameOverlayEvent event) { //try to close the Gui
         if (this.needClose && !isImGuiOpened()) {
             startFrame();
             endFrame();
@@ -225,12 +210,19 @@ public class GlobalImGuiRenderer {
         }
     }
 
-//    @Override
-//    public void onClose() {
-//        super.onClose();
-//        destroyImGui();
-//        MinecraftForge.EVENT_BUS.unregister(this);
-//    }
+    @SubscribeEvent
+    public void render(GuiScreenEvent.DrawScreenEvent.Post event) {
+        if (isImGuiOpened()) {
+            this.needClose = true;
+            startFrame();
+            setupDockSpace();
+            ImGui.pushStyleColor(ImGuiCol.WindowBg, 15, 15, 15, 240);
+            getCurrentImGuiScreen().buildImGui();
+            ImGui.popStyleColor(1);
+            ImGui.popStyleColor(1); //pop ImGuiCol.ChildBg in setupDockspace()
+            endFrame();
+        }
+    }
 
     private void startFrame() {
         imGuiGlfw.newFrame();
@@ -238,14 +230,8 @@ public class GlobalImGuiRenderer {
     }
 
     private void endFrame() {
-//        GL30.glBindFramebuffer(GL_FRAMEBUFFER, 0);
-//        GL30.glViewport(0, 0, mc.getWindow().getWidth(), mc.getWindow().getHeight());
-//        GL30.glClearColor(0, 0, 0, 1);
-//        GL30.glClear(GL30.GL_COLOR_BUFFER_BIT);
-
         ImGui.render();
         imGuiGl3.renderDrawData(ImGui.getDrawData());
-
 
         if (io.hasConfigFlags(ImGuiConfigFlags.ViewportsEnable)) {
             final long backupWindowPtr = glfwGetCurrentContext();
@@ -255,7 +241,7 @@ public class GlobalImGuiRenderer {
         }
     }
 
-    private void setupDockspace() {
+    private void setupDockSpace() {
         MainWindow mc_window = mc.getWindow();
         int windowFlags = ImGuiWindowFlags.NoDocking;
 
@@ -266,6 +252,7 @@ public class GlobalImGuiRenderer {
 
         ImGui.pushStyleVar(ImGuiStyleVar.WindowRounding, 0f);
         ImGui.pushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
+        ImGui.pushStyleColor(ImGuiCol.ChildBg, 15,15, 15, 240);
         ImGui.pushStyleColor(ImGuiCol.DockingEmptyBg, 0, 0, 0, 0);
         ImGui.pushStyleColor(ImGuiCol.WindowBg, 0, 0, 0, 0);
 
@@ -280,8 +267,8 @@ public class GlobalImGuiRenderer {
 
         ImGui.dockSpace(ImGui.getID("Dockspace"), 0f, 0f, ImGuiDockNodeFlags.None);
 
-        ImGui.popStyleColor(2);
         ImGui.popStyleVar(2);
+        ImGui.popStyleColor(2); //Don't pop ImGuiCol.ChildBg
 
         ImGui.end();
     }
