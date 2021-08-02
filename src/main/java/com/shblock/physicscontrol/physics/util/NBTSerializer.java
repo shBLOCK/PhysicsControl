@@ -6,7 +6,10 @@ import com.jme3.bullet.SolverType;
 import com.jme3.bullet.collision.Activation;
 import com.jme3.bullet.collision.AfMode;
 import com.jme3.bullet.collision.shapes.CollisionShape;
+import com.jme3.bullet.collision.shapes.infos.CompoundMesh;
+import com.jme3.bullet.collision.shapes.infos.IndexedMesh;
 import com.jme3.math.Matrix3f;
+import com.jme3.math.Plane;
 import com.jme3.math.Vector3f;
 import com.shblock.physicscontrol.physics.physics2d.CustomRigidBody2D;
 import com.shblock.physicscontrol.physics.physics2d.CustomWorld2D;
@@ -18,9 +21,8 @@ import net.minecraftforge.common.util.Constants;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 
-public class NBTHelper {
+public class NBTSerializer {
     public static ListNBT toNBT(Vector3f vec) {
         ListNBT nbt = new ListNBT();
         nbt.add(FloatNBT.valueOf(vec.x));
@@ -67,12 +69,74 @@ public class NBTHelper {
         return matrix;
     }
 
-    public static CompoundNBT toNBT(CollisionShape shape) {
+    public static CompoundNBT toNBT(IndexedMesh mesh) {
+        CompoundNBT nbt = new CompoundNBT();
+        nbt.putIntArray("indices", mesh.copyIndices().array());
+        ListNBT vertexes = new ListNBT();
+        for (float v : mesh.copyVertexPositions().array()) {
+            vertexes.add(FloatNBT.valueOf(v));
+        }
+        nbt.put("vertexes", vertexes);
+        return nbt;
+    }
 
+    public static IndexedMesh iMeshFromNBT(CompoundNBT nbt) {
+        ListNBT vertexes_nbt = nbt.getList("vertexes", Constants.NBT.TAG_FLOAT);
+        Vector3f[] vertexes = new Vector3f[vertexes_nbt.size() / 3];
+        for (int i=0; i<vertexes_nbt.size()/3; i++) {
+            vertexes[i] = new Vector3f(
+                    vertexes_nbt.getFloat(i * 3),
+                    vertexes_nbt.getFloat(i * 3 + 1),
+                    vertexes_nbt.getFloat(i * 3 + 2)
+            );
+        }
+        return new IndexedMesh(vertexes, nbt.getIntArray("indices"));
+    }
+
+    public static CompoundNBT toNBT(CompoundMesh mesh) {
+        CompoundNBT nbt = new CompoundNBT();
+        nbt.put("scale", toNBT(mesh.getScale(null)));
+        ListNBT sub_meshes = new ListNBT();
+        try {
+            for (IndexedMesh sub_mesh : (ArrayList<IndexedMesh>) mesh.getClass().getDeclaredField("submeshes").get(mesh)) {
+                sub_meshes.add(toNBT(sub_mesh));
+            }
+        } catch (IllegalAccessException | NoSuchFieldException e) {
+            e.printStackTrace();
+        }
+        nbt.put("sub_meshes", sub_meshes);
+        return nbt;
+    }
+
+    public static CompoundMesh cMeshFromNBT(CompoundNBT nbt) {
+        CompoundMesh mesh = new CompoundMesh();
+        mesh.setScale(vec3FromNBT(nbt.getList("scale", Constants.NBT.TAG_FLOAT)));
+        nbt.getList("sub_meshes", Constants.NBT.TAG_COMPOUND).forEach(
+                mesh_nbt -> mesh.add(iMeshFromNBT((CompoundNBT) mesh_nbt))
+        );
+        return mesh;
+    }
+
+    public static CompoundNBT toNBT(Plane plane) {
+        CompoundNBT nbt = new CompoundNBT();
+        nbt.put("normal", toNBT(plane.getNormal()));
+        nbt.putFloat("constant", plane.getConstant());
+        return nbt;
+    }
+
+    public static Plane planeFromNBT(CompoundNBT nbt) {
+        return new Plane(
+                vec3FromNBT(nbt.getList("normal", Constants.NBT.TAG_FLOAT)),
+                nbt.getFloat("constant")
+        );
+    }
+
+    public static CompoundNBT toNBT(CollisionShape shape) {
+        return CollisionShapeSerializer.toNBT(shape);
     }
 
     public static CollisionShape shapeFromNBT(CompoundNBT nbt) {
-
+        return CollisionShapeSerializer.fromNBT(nbt);
     }
 
     public static CompoundNBT toNBT(CustomRigidBody2D body) {
@@ -174,15 +238,20 @@ public class NBTHelper {
         CustomRigidBody2D[] bodies = new CustomRigidBody2D[size];
         long[] ids = new long[size];
         long[][] ignores = new long[size][];
-        for (int i=0;i<size;i++) {
+        for (int i=0; i < size; i++) {
             CompoundNBT nbt = list_nbt.getCompound(i);
             bodies[i] = body2dFromNBT(nbt);
             ids[i] = nbt.getLong("id");
             ignores[i] = nbt.getLongArray("ignored_ids");
         }
-        for (int i=0;i<size;i++) {
+        for (int i=0; i<size; i++) {
             for (long ignored_id : ignores[i]) {
-                bodies[i].addToIgnoreList(bodies[Arrays.binarySearch(ids, ignored_id)]);
+                for (int index=0; index < ids.length; index++) {
+                    if (ids[index] == ignored_id) {
+                        bodies[i].addToIgnoreList(bodies[index]);
+                        break;
+                    }
+                }
             }
         }
         return bodies;
@@ -242,7 +311,6 @@ public class NBTHelper {
         world.setRayTestFlags(nbt.getInt("ray_test_flags"));
         CustomRigidBody2D[] bodies = readAllBody2D(nbt.getList("2d_rigid_body_list", Constants.NBT.TAG_COMPOUND));
         Arrays.stream(bodies).forEach(world::addCollisionObject); //add all rigid bodies
-        worl
         return world;
     }
 }
