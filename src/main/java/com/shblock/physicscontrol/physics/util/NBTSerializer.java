@@ -8,11 +8,10 @@ import com.jme3.bullet.collision.AfMode;
 import com.jme3.bullet.collision.shapes.CollisionShape;
 import com.jme3.bullet.collision.shapes.infos.CompoundMesh;
 import com.jme3.bullet.collision.shapes.infos.IndexedMesh;
+import com.jme3.bullet.objects.PhysicsRigidBody;
 import com.jme3.math.Matrix3f;
 import com.jme3.math.Plane;
 import com.jme3.math.Vector3f;
-import com.shblock.physicscontrol.physics.physics2d.CustomRigidBody2D;
-import com.shblock.physicscontrol.physics.physics2d.CustomWorld2D;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.FloatNBT;
 import net.minecraft.nbt.ListNBT;
@@ -139,18 +138,18 @@ public class NBTSerializer {
         return CollisionShapeSerializer.fromNBT(nbt);
     }
 
-    public static CompoundNBT toNBT(CustomRigidBody2D body) {
+    public static CompoundNBT toNBT(PhysicsRigidBody body) {
         CompoundNBT nbt = new CompoundNBT();
         nbt.put("shape", toNBT(body.getCollisionShape()));
         nbt.putFloat("mass", body.getMass());
         //don't have to store scale because it's in the shape
-        nbt.putFloat("angular_factor", body.getAngularFactor());
-        nbt.put("linear_factor", toNBT(body.getLinearFactor((Vector2f) null)));
-        nbt.put("gravity", toNBT(body.getGravity((Vector2f) null)));
-        nbt.put("location", toNBT(body.getPhysicsLocation((Vector2f) null)));
+        nbt.put("angular_factor", toNBT(body.getAngularFactor(null)));
+        nbt.put("linear_factor", toNBT(body.getLinearFactor(null)));
+        nbt.put("gravity", toNBT(body.getGravity(null)));
+        nbt.put("location", toNBT(body.getPhysicsLocation(null)));
         nbt.put("rotation", toNBT(body.getPhysicsRotationMatrix(null)));
-        nbt.put("linear_velocity", toNBT(body.getLinearVelocity((Vector2f) null)));
-        nbt.putFloat("angular_velocity", body.getAngularVelocity());
+        nbt.put("linear_velocity", toNBT(body.getLinearVelocity(null)));
+        nbt.put("angular_velocity", toNBT(body.getAngularVelocity(null)));
         nbt.putFloat("friction", body.getFriction());
         nbt.putFloat("rolling_friction", body.getRollingFriction());
         nbt.putFloat("spinning_friction", body.getSpinningFriction());
@@ -182,16 +181,16 @@ public class NBTSerializer {
         return nbt;
     }
 
-    public static CustomRigidBody2D body2dFromNBT(CompoundNBT nbt) {
-        CustomRigidBody2D body = new CustomRigidBody2D(shapeFromNBT(nbt.getCompound("shape")), nbt.getFloat("mass"));
+    public static PhysicsRigidBody bodyFromNBT(CompoundNBT nbt) {
+        PhysicsRigidBody body = new PhysicsRigidBody(shapeFromNBT(nbt.getCompound("shape")), nbt.getFloat("mass"));
         //don't have to store scale because it's in the shape
-        body.setAngularFactor(nbt.getFloat("angular_factor"));
-        body.setLinearFactor(vec2FromNBT(nbt.getList("linear_factor", Constants.NBT.TAG_FLOAT)));
-        body.setGravity(vec2FromNBT(nbt.getList("gravity", Constants.NBT.TAG_FLOAT)));
-        body.setPhysicsLocation(vec2FromNBT(nbt.getList("location", Constants.NBT.TAG_FLOAT)));
+        body.setAngularFactor(vec3FromNBT(nbt.getList("angular_factor", Constants.NBT.TAG_FLOAT)));
+        body.setLinearFactor(vec3FromNBT(nbt.getList("linear_factor", Constants.NBT.TAG_FLOAT)));
+        body.setGravity(vec3FromNBT(nbt.getList("gravity", Constants.NBT.TAG_FLOAT)));
+        body.setPhysicsLocation(vec3FromNBT(nbt.getList("location", Constants.NBT.TAG_FLOAT)));
         body.setPhysicsRotation(matrix3FromNBT(nbt.getList("rotation", Constants.NBT.TAG_FLOAT)));
-        body.setLinearVelocity(vec2FromNBT(nbt.getList("linear_velocity", Constants.NBT.TAG_FLOAT)));
-        body.setAngularVelocity(nbt.getFloat("angular_velocity"));
+        body.setLinearVelocity(vec3FromNBT(nbt.getList("linear_velocity", Constants.NBT.TAG_FLOAT)));
+        body.setAngularVelocity(vec3FromNBT(nbt.getList("angular_velocity", Constants.NBT.TAG_FLOAT)));
         body.setFriction(nbt.getFloat("friction"));
         body.setRollingFriction(nbt.getFloat("rolling_friction"));
         body.setSpinningFriction(nbt.getFloat("spinning_friction"));
@@ -224,23 +223,23 @@ public class NBTSerializer {
         return body;
     }
 
-    private static ListNBT writeAllBody2D(Collection<CustomRigidBody2D> collection) {
+    private static ListNBT writeAllBody(Collection<PhysicsRigidBody> collection) {
         ListNBT nbt = new ListNBT();
-        for (CustomRigidBody2D body : collection) {
+        for (PhysicsRigidBody body : collection) {
             nbt.add(toNBT(body));
         }
         return nbt;
     }
 
     //this function also read the ignore list
-    private static CustomRigidBody2D[] readAllBody2D(ListNBT list_nbt) {
+    private static PhysicsRigidBody[] readAllBody(ListNBT list_nbt) {
         int size = list_nbt.size();
-        CustomRigidBody2D[] bodies = new CustomRigidBody2D[size];
+        PhysicsRigidBody[] bodies = new PhysicsRigidBody[size];
         long[] ids = new long[size];
         long[][] ignores = new long[size][];
         for (int i=0; i < size; i++) {
             CompoundNBT nbt = list_nbt.getCompound(i);
-            bodies[i] = body2dFromNBT(nbt);
+            bodies[i] = bodyFromNBT(nbt);
             ids[i] = nbt.getLong("id");
             ignores[i] = nbt.getLongArray("ignored_ids");
         }
@@ -280,36 +279,36 @@ public class NBTSerializer {
         return storeResult;
     }
 
-    public static CompoundNBT toNBT(CustomWorld2D world) {
+    public static CompoundNBT toNBT(PhysicsSpace world) {
         CompoundNBT nbt = new CompoundNBT();
-        nbt.put("world_min", toNBT(world.getWorldMin((Vector2f) null)));
-        nbt.put("world_max", toNBT(world.getWorldMax((Vector2f) null)));
+        nbt.put("world_min", toNBT(world.getWorldMin(null)));
+        nbt.put("world_max", toNBT(world.getWorldMax(null)));
         nbt.putInt("broad_phase_type", world.getBroadphaseType().ordinal());
         nbt.putInt("solver_type", world.getSolverType().ordinal());
         nbt.put("solver_info", toNBT(world.getSolverInfo()));
-        nbt.put("gravity", toNBT(world.getGravity((Vector2f) null)));
+        nbt.put("gravity", toNBT(world.getGravity(null)));
         nbt.putFloat("accuracy", world.getAccuracy());
-        nbt.putInt("max_sub_steps", world.getMaxSubSteps());
-        nbt.putFloat("max_time_step", world.getMaxTimeStep());
+        nbt.putInt("max_sub_steps", world.maxSubSteps());
+        nbt.putFloat("max_time_step", world.maxTimeStep());
         nbt.putInt("ray_test_flags", world.getRayTestFlags());
-        nbt.put("2d_rigid_body_list", writeAllBody2D(world.get2DRigidBodyList()));
+        nbt.put("rigid_body_list", writeAllBody(world.getRigidBodyList()));
         return nbt;
     }
 
-    public static CustomWorld2D world2FromNBT(CompoundNBT nbt) {
-        CustomWorld2D world = new CustomWorld2D(
-                vec2FromNBT(nbt.getList("world_min", Constants.NBT.TAG_FLOAT)),
-                vec2FromNBT(nbt.getList("world_max", Constants.NBT.TAG_FLOAT)),
+    public static PhysicsSpace physicsSpaceFromNBT(CompoundNBT nbt) {
+        PhysicsSpace world = new PhysicsSpace(
+                vec3FromNBT(nbt.getList("world_min", Constants.NBT.TAG_FLOAT)),
+                vec3FromNBT(nbt.getList("world_max", Constants.NBT.TAG_FLOAT)),
                 PhysicsSpace.BroadphaseType.values()[nbt.getInt("broad_phase_type")],
                 SolverType.values()[nbt.getInt("solver_type")]
         );
         solverInfoFromNBT(nbt.getCompound("solver_info"), world.getSolverInfo());
-        world.setGravity(vec2FromNBT(nbt.getList("gravity", Constants.NBT.TAG_FLOAT)));
+        world.setGravity(vec3FromNBT(nbt.getList("gravity", Constants.NBT.TAG_FLOAT)));
         world.setAccuracy(nbt.getFloat("accuracy"));
         world.setMaxSubSteps(nbt.getInt("max_sub_steps"));
         world.setMaxTimeStep(nbt.getFloat("max_time_step"));
         world.setRayTestFlags(nbt.getInt("ray_test_flags"));
-        CustomRigidBody2D[] bodies = readAllBody2D(nbt.getList("2d_rigid_body_list", Constants.NBT.TAG_COMPOUND));
+        PhysicsRigidBody[] bodies = readAllBody(nbt.getList("rigid_body_list", Constants.NBT.TAG_COMPOUND));
         Arrays.stream(bodies).forEach(world::addCollisionObject); //add all rigid bodies
         return world;
     }
