@@ -9,6 +9,12 @@ public class InteractivePhysicsSimulator { //TODO: serialize this instead of spa
 
     private PhysicsSpace space;
     private boolean simulationRunning;
+    public enum StepModes {
+        TICK, //step the simulation every tick (1/20 sec)
+        FRAME //step the simulation every frame
+    }
+    private StepModes stepMode = StepModes.FRAME;
+    private float simulationSpeed = 1F;
     private CommandHistory commandHistory;
 
     public InteractivePhysicsSimulator(PhysicsSpace space) {
@@ -36,8 +42,26 @@ public class InteractivePhysicsSimulator { //TODO: serialize this instead of spa
         this.space.update(time);
     }
 
+    //Should be called every tick (0.05 sec)
+    public void tick() {
+        if (this.stepMode == StepModes.TICK) {
+            step(0.05F * this.simulationSpeed);
+        }
+    }
+
+    //Should be called every frame
+    public void frame(float particleTick) {
+        if (this.stepMode == StepModes.FRAME) {
+            step(particleTick * 0.05F * this.simulationSpeed);
+        }
+    }
+
     public PhysicsSpace getSpace() {
         return this.space;
+    }
+
+    public void setSpace(PhysicsSpace new_space) {
+        this.space = new_space;
     }
 
     public void executeCommand(AbstractCommand command) {
@@ -50,5 +74,13 @@ public class InteractivePhysicsSimulator { //TODO: serialize this instead of spa
 
     public AbstractCommand redo() {
         return commandHistory.redo();
+    }
+
+    public StepModes getStepMode() {
+        return stepMode;
+    }
+
+    public void setStepMode(StepModes stepMode) {
+        this.stepMode = stepMode;
     }
 }

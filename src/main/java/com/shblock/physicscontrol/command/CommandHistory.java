@@ -37,7 +37,7 @@ public class CommandHistory {
     public AbstractCommand redo() {
         if (pointer < history.size() - 1) {
             AbstractCommand command = history.get(pointer);
-            command.execute();
+            command.redo(); //By default just calls command.execute()
             pointer++;
             return command;
         }

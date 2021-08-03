@@ -6,6 +6,7 @@ import com.jme3.math.Vector3f;
 import com.shblock.physicscontrol.physics.util.MyVector2f;
 import com.shblock.physicscontrol.physics.util.Vector2f;
 
+import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
@@ -53,7 +54,11 @@ public class CustomSpace2D extends PhysicsSpace {
 
     public int getMaxSubSteps() {
         try {
-            return getClass().getDeclaredField("maxSubSteps").getInt(this);
+            Field field = getClass().getDeclaredField("maxSubSteps");
+            field.setAccessible(true);
+            int result = field.getInt(this);
+            field.setAccessible(false);
+            return result;
         } catch (IllegalAccessException | NoSuchFieldException e) {
             e.printStackTrace();
         }
@@ -62,7 +67,11 @@ public class CustomSpace2D extends PhysicsSpace {
 
     public float getMaxTimeStep() {
         try {
-            return getClass().getDeclaredField("maxTimeStep").getFloat(this);
+            Field field = getClass().getDeclaredField("maxTimeStep");
+            field.setAccessible(true);
+            float result = field.getFloat(this);
+            field.setAccessible(false);
+            return result;
         } catch (IllegalAccessException | NoSuchFieldException e) {
             e.printStackTrace();
         }

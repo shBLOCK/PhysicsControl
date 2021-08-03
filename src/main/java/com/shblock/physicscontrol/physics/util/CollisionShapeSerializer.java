@@ -60,10 +60,14 @@ public class CollisionShapeSerializer {
             type = "g_impact";
             GImpactCollisionShape cs = (GImpactCollisionShape) shape;
             try {
+                Field field = cs.getClass().getDeclaredField("nativeMesh");
+                field.setAccessible(true);
+                CompoundMesh mesh = (CompoundMesh) field.get(cs);
+                field.setAccessible(false);
                 nbt.put(
                         "mesh",
                         NBTSerializer.toNBT(
-                                (CompoundMesh) cs.getClass().getDeclaredField("nativeMesh").get(cs)
+                                mesh
                         )
                 );
             } catch (IllegalAccessException | NoSuchFieldException e) {
@@ -76,6 +80,7 @@ public class CollisionShapeSerializer {
             int a = 0;
             for (Field field : clz.getDeclaredFields()) {
                 try {
+                    field.setAccessible(true);
                     switch (field.getName()) {
                         case "heightStickLength":
                         case "heightStickWidth":
@@ -96,6 +101,7 @@ public class CollisionShapeSerializer {
                             nbt.put(field.getName(), fl);
                             break;
                     }
+                    field.setAccessible(false);
                 } catch (IllegalArgumentException | IllegalAccessException e) {
                     e.printStackTrace();
                 }
@@ -113,10 +119,14 @@ public class CollisionShapeSerializer {
             MeshCollisionShape cs = (MeshCollisionShape) shape;
             nbt.putByteArray("bvh", cs.serializeBvh());
             try {
+                Field field = cs.getClass().getDeclaredField("nativeMesh");
+                field.setAccessible(true);
+                CompoundMesh mesh = (CompoundMesh) field.get(cs);
+                field.setAccessible(false);
                 nbt.put(
                         "mesh",
                         NBTSerializer.toNBT(
-                                (CompoundMesh) cs.getClass().getDeclaredField("nativeMesh").get(cs)
+                                mesh
                         )
                 );
             } catch (IllegalAccessException | NoSuchFieldException e) {
@@ -211,8 +221,12 @@ public class CollisionShapeSerializer {
             case "g_impact":
                 CompoundMesh compoundMesh = NBTSerializer.cMeshFromNBT(nbt.getCompound("mesh"));
                 try {
+                    Field field = compoundMesh.getClass().getDeclaredField("submeshes");
+                    field.setAccessible(true);
+                    IndexedMesh[] meshes = (IndexedMesh[]) ((ArrayList<IndexedMesh>) field.get(compoundMesh)).toArray();
+                    field.setAccessible(false);
                     shape = new GImpactCollisionShape(
-                            (IndexedMesh[]) ((ArrayList<IndexedMesh>) compoundMesh.getClass().getDeclaredField("submeshes").get(compoundMesh)).toArray()
+                            meshes
                     );
                 } catch (IllegalAccessException | NoSuchFieldException e) {
                     e.printStackTrace();
@@ -247,9 +261,13 @@ public class CollisionShapeSerializer {
             case "mesh":
                 CompoundMesh mesh = NBTSerializer.cMeshFromNBT(nbt.getCompound("mesh"));
                 try {
+                    Field field = mesh.getClass().getDeclaredField("submeshes");
+                    field.setAccessible(true);
+                    IndexedMesh[] meshes = (IndexedMesh[]) ((ArrayList<IndexedMesh>) field.get(mesh)).toArray();
+                    field.setAccessible(false);
                     shape = new MeshCollisionShape(
                             nbt.getByteArray("bvh"),
-                            (IndexedMesh[]) ((ArrayList<IndexedMesh>) mesh.getClass().getDeclaredField("submeshes").get(mesh)).toArray()
+                            meshes
                     );
                 } catch (IllegalAccessException | NoSuchFieldException e) {
                     e.printStackTrace();

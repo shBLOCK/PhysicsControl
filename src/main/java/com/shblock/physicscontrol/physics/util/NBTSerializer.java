@@ -17,6 +17,7 @@ import net.minecraft.nbt.FloatNBT;
 import net.minecraft.nbt.ListNBT;
 import net.minecraftforge.common.util.Constants;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -97,9 +98,12 @@ public class NBTSerializer {
         nbt.put("scale", toNBT(mesh.getScale(null)));
         ListNBT sub_meshes = new ListNBT();
         try {
-            for (IndexedMesh sub_mesh : (ArrayList<IndexedMesh>) mesh.getClass().getDeclaredField("submeshes").get(mesh)) {
+            Field field = mesh.getClass().getDeclaredField("submeshes");
+            field.setAccessible(true);
+            for (IndexedMesh sub_mesh : (ArrayList<IndexedMesh>) field.get(mesh)) {
                 sub_meshes.add(toNBT(sub_mesh));
             }
+            field.setAccessible(false);
         } catch (IllegalAccessException | NoSuchFieldException e) {
             e.printStackTrace();
         }
