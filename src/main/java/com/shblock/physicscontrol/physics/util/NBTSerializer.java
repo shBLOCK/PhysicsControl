@@ -21,6 +21,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.logging.Level;
 
 public class NBTSerializer {
     public static ListNBT toNBT(Vector3f vec) {
@@ -56,7 +57,7 @@ public class NBTSerializer {
     public static ListNBT toNBT(Matrix3f matrix) {
         ListNBT nbt = new ListNBT();
         for (int i=0;i<9;i++) {
-            nbt.add(FloatNBT.valueOf(matrix.get(i, i / 3)));
+            nbt.add(FloatNBT.valueOf(matrix. get(i % 3,  i / 3)));
         }
         return nbt;
     }
@@ -64,7 +65,7 @@ public class NBTSerializer {
     public static Matrix3f matrix3FromNBT(ListNBT nbt) {
         Matrix3f matrix = new Matrix3f();
         for (int i=0;i<9;i++) {
-            matrix.set(i, i / 3, nbt.getFloat(i));
+            matrix.set(i % 3, i / 3, nbt.getFloat(i));
         }
         return matrix;
     }
@@ -190,7 +191,9 @@ public class NBTSerializer {
         //don't have to store scale because it's in the shape
         body.setAngularFactor(vec3FromNBT(nbt.getList("angular_factor", Constants.NBT.TAG_FLOAT)));
         body.setLinearFactor(vec3FromNBT(nbt.getList("linear_factor", Constants.NBT.TAG_FLOAT)));
+        PhysicsRigidBody.logger2.setLevel(Level.OFF);
         body.setGravity(vec3FromNBT(nbt.getList("gravity", Constants.NBT.TAG_FLOAT)));
+        PhysicsRigidBody.logger2.setLevel(Level.ALL);
         body.setPhysicsLocation(vec3FromNBT(nbt.getList("location", Constants.NBT.TAG_FLOAT)));
         body.setPhysicsRotation(matrix3FromNBT(nbt.getList("rotation", Constants.NBT.TAG_FLOAT)));
         body.setLinearVelocity(vec3FromNBT(nbt.getList("linear_velocity", Constants.NBT.TAG_FLOAT)));

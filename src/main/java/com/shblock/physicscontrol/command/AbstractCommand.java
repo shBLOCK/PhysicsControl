@@ -29,6 +29,13 @@ public abstract class AbstractCommand implements INBTSerializable<CompoundNBT> {
 
     public abstract String getName();
 
+    /**
+     * If this command should be saved in the command history list.
+     */
+    public boolean shouldSave() {
+        return true;
+    }
+
     @Override
     public CompoundNBT serializeNBT() {
         CompoundNBT nbt = new CompoundNBT();

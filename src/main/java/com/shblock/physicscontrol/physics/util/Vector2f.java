@@ -60,6 +60,10 @@ public class Vector2f implements Cloneable, java.io.Serializable {
         this.y = y;
     }
 
+    public Vector2f(double x, double y) {
+        this((float) x, (float) y);
+    }
+
     /**
      * Convert a <code>Vector3f</code> to a new <code>Vector2f</code> (ignore Z value)
      * @param vector3f   the <code>Vector3f</code> object to convert.

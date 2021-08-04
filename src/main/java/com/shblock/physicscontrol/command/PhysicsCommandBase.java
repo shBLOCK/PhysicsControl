@@ -13,6 +13,10 @@ public abstract class PhysicsCommandBase extends AbstractCommand {
         this.old_space = NBTSerializer.toNBT(space);
     }
 
+    public PhysicsCommandBase() {
+        this(getSpace());
+    }
+
     /**
      * get current {@link PhysicsSpace} object from {@link com.shblock.physicscontrol.client.InteractivePhysicsSimulator}.
      * @return the {@link PhysicsSpace} object
@@ -38,6 +42,13 @@ public abstract class PhysicsCommandBase extends AbstractCommand {
     @Override
     public void undo() {
         setSpace(NBTSerializer.physicsSpaceFromNBT(this.old_space));
+        InteractivePhysicsSimulator.getInstance().setSimulationRunning(false);
+    }
+
+    @Override
+    public void redo() {
+        super.redo();
+        InteractivePhysicsSimulator.getInstance().setSimulationRunning(false);
     }
 
     @Override

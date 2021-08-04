@@ -181,10 +181,10 @@ public class GlobalImGuiRenderer {
         int action = event.getAction();
 
         imGuiGlfw.mouseButtonCallback(windowPtr, button, action, event.getMods());
-
-        if (io.getWantCaptureMouse()) {
-            event.setCanceled(true);
-        }
+//        System.out.println(io.getMouseHoveredViewport());
+//        if (io.getWantCaptureMouse()) {
+//            event.setCanceled(true);
+//        }
     }
 
     //glfwScrollCallback
@@ -196,9 +196,9 @@ public class GlobalImGuiRenderer {
         }
 
         imGuiGlfw.scrollCallback(windowPtr, event.getScrollDelta(), event.getScrollDelta());
-        if (io.getWantCaptureMouse()) {
-            event.setCanceled(true);
-        }
+//        if (io.getWantCaptureMouse()) {
+//            event.setCanceled(true);
+//        }
     }
 
     @SubscribeEvent

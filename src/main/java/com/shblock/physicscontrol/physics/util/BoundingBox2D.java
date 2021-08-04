@@ -3,6 +3,7 @@ package com.shblock.physicscontrol.physics.util;
 import com.jme3.bounding.BoundingBox;
 import com.jme3.math.FastMath;
 
+@Deprecated
 public class BoundingBox2D {
     final private Vector2f center = new Vector2f();
     /**

@@ -309,7 +309,9 @@ public class CollisionShapeSerializer {
         if (!(shape instanceof HeightfieldCollisionShape)) {
             shape.setScale(NBTSerializer.vec3FromNBT(nbt.getList("scale", Constants.NBT.TAG_FLOAT)));
         }
-        shape.setMargin(nbt.getFloat("margin")); // Although you can't set margin for all the shapes, but they won't crash
+        if (!(shape instanceof SphereCollisionShape) && !(shape instanceof CapsuleCollisionShape)){
+            shape.setMargin(nbt.getFloat("margin"));
+        }
         return shape;
     }
 

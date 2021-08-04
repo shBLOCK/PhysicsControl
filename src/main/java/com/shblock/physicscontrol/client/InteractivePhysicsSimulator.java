@@ -3,6 +3,8 @@ package com.shblock.physicscontrol.client;
 import com.jme3.bullet.PhysicsSpace;
 import com.shblock.physicscontrol.command.AbstractCommand;
 import com.shblock.physicscontrol.command.CommandHistory;
+import com.shblock.physicscontrol.command.CommandStartSimulation;
+import com.shblock.physicscontrol.command.CommandStopSimulation;
 
 public class InteractivePhysicsSimulator { //TODO: serialize this instead of space
     private static InteractivePhysicsSimulator currentInstance;
@@ -24,6 +26,7 @@ public class InteractivePhysicsSimulator { //TODO: serialize this instead of spa
         assert currentInstance == null;
         currentInstance = this;
         this.space = space;
+        this.commandHistory = new CommandHistory();
     }
 
     public static InteractivePhysicsSimulator getInstance() {
@@ -44,14 +47,14 @@ public class InteractivePhysicsSimulator { //TODO: serialize this instead of spa
 
     //Should be called every tick (0.05 sec)
     public void tick() {
-        if (this.stepMode == StepModes.TICK) {
+        if (isSimulationRunning() && this.stepMode == StepModes.TICK) {
             step(0.05F * this.simulationSpeed);
         }
     }
 
     //Should be called every frame
     public void frame(float particleTick) {
-        if (this.stepMode == StepModes.FRAME) {
+        if (isSimulationRunning() && this.stepMode == StepModes.FRAME) {
             step(particleTick * 0.05F * this.simulationSpeed);
         }
     }
@@ -65,7 +68,7 @@ public class InteractivePhysicsSimulator { //TODO: serialize this instead of spa
     }
 
     public void executeCommand(AbstractCommand command) {
-        commandHistory.execute(command);
+        this.commandHistory.execute(command);
     }
 
     public AbstractCommand undo() {
@@ -82,5 +85,21 @@ public class InteractivePhysicsSimulator { //TODO: serialize this instead of spa
 
     public void setStepMode(StepModes stepMode) {
         this.stepMode = stepMode;
+    }
+
+    public boolean isSimulationRunning() {
+        return simulationRunning;
+    }
+
+    public void setSimulationRunning(boolean simulationRunning) {
+        this.simulationRunning = simulationRunning;
+    }
+
+    public void switchSimulationRunning() {
+        if (isSimulationRunning()) {
+            executeCommand(new CommandStopSimulation());
+        } else {
+            executeCommand(new CommandStartSimulation());
+        }
     }
 }

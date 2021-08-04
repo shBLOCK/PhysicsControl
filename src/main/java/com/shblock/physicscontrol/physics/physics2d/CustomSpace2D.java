@@ -10,6 +10,7 @@ import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
+@Deprecated
 public class CustomSpace2D extends PhysicsSpace {
     public CustomSpace2D(Vector2f worldMin, Vector2f worldMax, BroadphaseType broadphaseType, SolverType solverType) {
         super(worldMin.toVec3(), worldMax.toVec3(), broadphaseType, solverType);
