@@ -7,14 +7,10 @@ import com.shblock.physicscontrol.command.CommandHistory;
 import com.shblock.physicscontrol.command.CommandStartSimulation;
 import com.shblock.physicscontrol.command.CommandStopSimulation;
 
-import java.util.HashMap;
-import java.util.Map;
-
 public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of space
     private static InteractivePhysicsSimulator2D currentInstance;
 
     private PhysicsSpace space;
-    private final Map<Integer, Integer> zIndexes = new HashMap<>();
     private int currentId = -1;
     private boolean simulationRunning;
     public enum StepModes {
@@ -39,9 +35,9 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
         return currentInstance;
     }
 
-    public static void setInstance(InteractivePhysicsSimulator2D simulator) {
-        currentInstance = simulator;
-    }
+//    public static void setInstance(InteractivePhysicsSimulator2D simulator) {
+//        currentInstance = simulator;
+//    }
 
     public void close() {
         currentInstance = null;
@@ -113,7 +109,7 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
         if (isSimulationRunning()) {
             executeCommand(new CommandStopSimulation());
         } else {
-            executeCommand(new CommandStartSimulation());
+            executeCommand(new CommandStartSimulation(getSpace()));
         }
     }
 
@@ -142,10 +138,7 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
     }
 
     public int nextId() {
-        return this.currentId++;
-    }
-
-    public int getZIndex(int id) {
-        return this.zIndexes.get(id);
+        this.currentId++;
+        return this.currentId;
     }
 }

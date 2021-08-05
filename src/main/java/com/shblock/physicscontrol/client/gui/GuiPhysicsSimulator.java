@@ -2,6 +2,7 @@ package com.shblock.physicscontrol.client.gui;
 
 import com.jme3.bounding.BoundingBox;
 import com.jme3.bullet.PhysicsSpace;
+import com.jme3.bullet.collision.PhysicsCollisionObject;
 import com.jme3.bullet.collision.shapes.SphereCollisionShape;
 import com.jme3.bullet.objects.PhysicsRigidBody;
 import com.jme3.math.Vector3f;
@@ -91,9 +92,9 @@ public class GuiPhysicsSimulator extends ImGuiBase {
         matrixStack.translate(this.globalTranslate.x, this.globalTranslate.y, 0F);
         matrixStack.scale(this.globalScale, this.globalScale, 1F);
         BoundingBox screenBB = new BoundingBox(toSpacePos(0F, 0F).toVec3(), toSpacePos(width, height).toVec3());
-        for (PhysicsRigidBody body : space.getRigidBodyList()) {
+        for (PhysicsCollisionObject body : space.getPcoList()) {
             if (BoundingBoxHelper.isOverlapping2D(body.boundingBox(null), screenBB)) {
-                ShapeRenderer2D.drawRigidBody(matrixStack, body, false);
+                ShapeRenderer2D.drawCollisionObject(matrixStack, body, false);
             }
         }
         matrixStack.popPose();
@@ -142,7 +143,7 @@ public class GuiPhysicsSimulator extends ImGuiBase {
             PhysicsRigidBody body = new PhysicsRigidBody(new SphereCollisionShape(0.5F), 1F);
             body.setPhysicsLocation(toSpacePos(mouseX, mouseY).toVec3());
             body.setLinearVelocity(new Vector3f(10F, 0F, 0F));
-            getSimulator().executeCommand(new CommandAddRigidBody(body));
+            getSimulator().executeCommand(new CommandAddRigidBody(getSimulator().getSpace(), body));
             return true;
         } else if (button == 1) {
             System.out.println(getSimulator().getSpace().rayTestRaw(
@@ -192,7 +193,7 @@ public class GuiPhysicsSimulator extends ImGuiBase {
                 PhysicsRigidBody body = new PhysicsRigidBody(new SphereCollisionShape(0.5F), 1F);
                 body.setPhysicsLocation(new Vector3f(0F, 0F, 0F));
                 body.setLinearVelocity(new Vector3f(10F, 0F, 0F));
-                getSimulator().executeCommand(new CommandAddRigidBody(body));
+                getSimulator().executeCommand(new CommandAddRigidBody(getSimulator().getSpace(), body));
                 return true;
         }
         return false;

@@ -335,49 +335,49 @@ public class NBTSerializer {
         return world;
     }
 
-    public static CompoundNBT toNBT(CommandHistory history) {
-        CompoundNBT nbt = new CompoundNBT();
-        ListNBT list = new ListNBT();
-        for (AbstractCommand command : history.getList()) {
-            list.add(CommandSerializer.toNBT(command));
-        }
-        nbt.put("list", list);
-        nbt.putInt("max", history.getMaxHistory());
-        nbt.putInt("pointer", history.getPointer());
-        return nbt;
-    }
-
-    public static CommandHistory historyFromNBT(CompoundNBT nbt) {
-        CommandHistory history = new CommandHistory();
-        List<AbstractCommand> list = new ArrayList<>();
-        ListNBT list_nbt = nbt.getList("list", Constants.NBT.TAG_COMPOUND);
-        for (int i=0; i<list_nbt.size(); i++) {
-            list.add(CommandSerializer.fromNBT(list_nbt.getCompound(i)));
-        }
-        history.setList(list);
-        history.setMaxHistory(nbt.getInt("max"));
-        history.setPointer(nbt.getInt("pointer"));
-        return history;
-    }
-
-    public static CompoundNBT toNBT(InteractivePhysicsSimulator2D simulator) {
-        CompoundNBT nbt = new CompoundNBT();
-        nbt.put("space", toNBT(simulator.getSpace()));
-        nbt.putInt("current_id", simulator.getCurrentId());
-        nbt.putInt("step_mode", simulator.getStepMode().ordinal());
-        nbt.putFloat("simulation_speed", simulator.getSimulationSpeed());
-//        nbt.put("command_history", toNBT(simulator.getCommandHistory()));
-        return nbt;
-    }
-
-    public static InteractivePhysicsSimulator2D simulator2DFromNBT(CompoundNBT nbt) {
-        CommandHistory history = InteractivePhysicsSimulator2D.getInstance().getCommandHistory();
-        InteractivePhysicsSimulator2D simulator = new InteractivePhysicsSimulator2D(physicsSpaceFromNBT(nbt.getCompound("space")));
-        simulator.setCommandHistory(history);
-        simulator.setCurrentId(nbt.getInt("current_id"));
-        simulator.setStepMode(InteractivePhysicsSimulator2D.StepModes.values()[nbt.getInt("step_mode")]);
-        simulator.setSimulationSpeed(nbt.getFloat("simulation_speed"));
-//        simulator.setCommandHistory(historyFromNBT(nbt.getCompound("command_history")));
-        return simulator;
-    }
+//    public static CompoundNBT toNBT(CommandHistory history) {
+//        CompoundNBT nbt = new CompoundNBT();
+//        ListNBT list = new ListNBT();
+//        for (AbstractCommand command : history.getList()) {
+//            list.add(CommandSerializer.toNBT(command));
+//        }
+//        nbt.put("list", list);
+//        nbt.putInt("max", history.getMaxHistory());
+//        nbt.putInt("pointer", history.getPointer());
+//        return nbt;
+//    }
+//
+//    public static CommandHistory historyFromNBT(CompoundNBT nbt) {
+//        CommandHistory history = new CommandHistory();
+//        List<AbstractCommand> list = new ArrayList<>();
+//        ListNBT list_nbt = nbt.getList("list", Constants.NBT.TAG_COMPOUND);
+//        for (int i=0; i<list_nbt.size(); i++) {
+//            list.add(CommandSerializer.fromNBT(list_nbt.getCompound(i)));
+//        }
+//        history.setList(list);
+//        history.setMaxHistory(nbt.getInt("max"));
+//        history.setPointer(nbt.getInt("pointer"));
+//        return history;
+//    }
+//
+//    public static CompoundNBT toNBT(InteractivePhysicsSimulator2D simulator) {
+//        CompoundNBT nbt = new CompoundNBT();
+//        nbt.put("space", toNBT(simulator.getSpace()));
+//        nbt.putInt("current_id", simulator.getCurrentId());
+//        nbt.putInt("step_mode", simulator.getStepMode().ordinal());
+//        nbt.putFloat("simulation_speed", simulator.getSimulationSpeed());
+////        nbt.put("command_history", toNBT(simulator.getCommandHistory()));
+//        return nbt;
+//    }
+//
+//    public static InteractivePhysicsSimulator2D simulator2DFromNBT(CompoundNBT nbt) {
+//        CommandHistory history = InteractivePhysicsSimulator2D.getInstance().getCommandHistory();
+//        InteractivePhysicsSimulator2D simulator = new InteractivePhysicsSimulator2D(physicsSpaceFromNBT(nbt.getCompound("space")));
+//        simulator.setCommandHistory(history);
+//        simulator.setCurrentId(nbt.getInt("current_id"));
+//        simulator.setStepMode(InteractivePhysicsSimulator2D.StepModes.values()[nbt.getInt("step_mode")]);
+//        simulator.setSimulationSpeed(nbt.getFloat("simulation_speed"));
+////        simulator.setCommandHistory(historyFromNBT(nbt.getCompound("command_history")));
+//        return simulator;
+//    }
 }

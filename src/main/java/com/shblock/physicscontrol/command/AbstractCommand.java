@@ -11,7 +11,7 @@ import java.util.List;
 public abstract class AbstractCommand implements INBTSerializable<CompoundNBT> {
     protected final List<AbstractCommand> childCommands = new ArrayList<>();
 
-    //Must have a empty constructor to make a dummy object for fromNBT
+    //Must have a empty constructor to make a dummy object for deserializeNBT
     public AbstractCommand() {}
 
     public abstract void execute();

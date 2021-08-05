@@ -1,33 +1,37 @@
 package com.shblock.physicscontrol.client.gui;
 
+import com.jme3.bullet.collision.PhysicsCollisionObject;
 import com.jme3.bullet.collision.shapes.CollisionShape;
 import com.jme3.bullet.collision.shapes.SphereCollisionShape;
-import com.jme3.bullet.objects.PhysicsRigidBody;
 import com.mojang.blaze3d.matrix.MatrixStack;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.shblock.physicscontrol.physics.physics2d.CollisionObjectUserObj2D;
 import com.shblock.physicscontrol.physics.util.Vector2f;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.math.vector.Quaternion;
 
-import java.util.Random;
-
 public class ShapeRenderer2D {
-    public static void drawRigidBody(MatrixStack matrixStack, PhysicsRigidBody body, boolean isSelected) {
+    private static final float Z_LEVEL_STEP = 0.001F;
+
+    public static void drawCollisionObject(MatrixStack matrixStack, PhysicsCollisionObject body, boolean isSelected) {
         matrixStack.pushPose();
+
+        RenderSystem.enableDepthTest();
 
         Vector2f pos = new Vector2f(body.getPhysicsLocation(null));
         com.jme3.math.Quaternion q = body.getPhysicsRotation(null);
         Quaternion rotation = new Quaternion(q.getX(), q.getY(), q.getZ(), q.getW());
         Vector2f scale = new Vector2f(body.getScale(null));
 
-        matrixStack.translate(pos.x, -pos.y, 0F);
+        CollisionShape shape = body.getCollisionShape();
+        CollisionObjectUserObj2D userObj = (CollisionObjectUserObj2D) body.getUserObject();
+
+        matrixStack.translate(pos.x, -pos.y, userObj.getZLevel() * Z_LEVEL_STEP - 1000F);
         matrixStack.scale(scale.x, scale.y, 1F);
         matrixStack.mulPose(rotation);
 
         Matrix4f matrix = matrixStack.last().pose();
 
-        CollisionShape shape = body.getCollisionShape();
-        CollisionObjectUserObj2D userObj = (CollisionObjectUserObj2D) body.getUserObject();
         int r = userObj.r;
         int g = userObj.g;
         int b = userObj.b;
@@ -37,7 +41,6 @@ public class ShapeRenderer2D {
         int db = (int) (b * RenderHelper.COLOR_DECREASE);
         if (shape instanceof SphereCollisionShape) {
             float radius = ((SphereCollisionShape) shape).getRadius();
-
             RenderHelper.drawCircle(matrix, radius, r, g, b, a);
             RenderHelper.drawCircleDirection(matrix, radius, dr, dg, db, a);
             if (isSelected) {
@@ -46,6 +49,8 @@ public class ShapeRenderer2D {
                 RenderHelper.drawCircleFrame(matrix, radius, 1F, dr, dg, db, a);
             }
         }
+
+        RenderSystem.disableDepthTest();
 
         matrixStack.popPose();
     }

@@ -3,6 +3,8 @@ package com.shblock.physicscontrol.command;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
 
 public class CommandStopSimulation extends AbstractCommand {
+    public CommandStopSimulation() {}
+
     @Override
     public void execute() {
         InteractivePhysicsSimulator2D.getInstance().setSimulationRunning(false);

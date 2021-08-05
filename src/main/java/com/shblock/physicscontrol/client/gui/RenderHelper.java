@@ -29,20 +29,6 @@ public class RenderHelper {
         tessellator.end();
 
         RenderSystem.enableTexture();
-
-//        RenderSystem.disableTexture();
-//        GL11.glEnable(GL11.GL_POINT_SMOOTH);
-//        GL11.glPointSize(radius * scale * 4);
-//
-//        Tessellator tessellator = Tessellator.getInstance();
-//        BufferBuilder builder = tessellator.getBuilder();
-//        builder.begin(GL11.GL_POINTS, DefaultVertexFormats.POSITION_COLOR);
-//        builder.vertex(matrix, 0F, 0F, 0F).color(r, g, b, a).endVertex();
-//        tessellator.end();
-//
-//        RenderSystem.enableTexture();
-//        GL11.glDisable(GL11.GL_POINT_SMOOTH);
-//        GL11.glPointSize(1F);
     }
 
     public static void drawCircle(Matrix4f matrix, float radius, int r, int g, int b, int a) {
