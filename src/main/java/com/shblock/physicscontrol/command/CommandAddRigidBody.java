@@ -17,7 +17,7 @@ public class CommandAddRigidBody extends PhysicsCommandBase {
         super(space);
         body.setUserObject(new CollisionObjectUserObj2D(InteractivePhysicsSimulator2D.getInstance().nextId()));
         body.setLinearFactor(new Vector3f(1F, 1F, 0F));
-        body.setAngularFactor(new Vector3f(1F, 0F, 0F));
+        body.setAngularFactor(new Vector3f(0F, 0F, 1F));
         this.body = NBTSerializer.toNBT(body);
     }
 
