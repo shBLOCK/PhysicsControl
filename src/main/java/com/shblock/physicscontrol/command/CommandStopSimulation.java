@@ -1,11 +1,11 @@
 package com.shblock.physicscontrol.command;
 
-import com.shblock.physicscontrol.client.InteractivePhysicsSimulator;
+import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
 
 public class CommandStopSimulation extends AbstractCommand {
     @Override
     public void execute() {
-        InteractivePhysicsSimulator.getInstance().setSimulationRunning(false);
+        InteractivePhysicsSimulator2D.getInstance().setSimulationRunning(false);
     }
 
     @Override

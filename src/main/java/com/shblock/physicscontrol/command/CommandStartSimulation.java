@@ -1,11 +1,11 @@
 package com.shblock.physicscontrol.command;
 
-import com.shblock.physicscontrol.client.InteractivePhysicsSimulator;
+import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
 
 public class CommandStartSimulation extends PhysicsCommandBase {
     @Override
     public void execute() {
-        InteractivePhysicsSimulator.getInstance().setSimulationRunning(true);
+        InteractivePhysicsSimulator2D.getInstance().setSimulationRunning(true);
     }
 
     @Override

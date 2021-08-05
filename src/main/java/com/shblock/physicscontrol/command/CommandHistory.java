@@ -6,7 +6,7 @@ import java.util.List;
 // https://www.youtube.com/watch?v=vqRHjhaECv4
 public class CommandHistory {
     private int MAX_HISTORY = 64;
-    private final List<AbstractCommand> history = new ArrayList<>();
+    private List<AbstractCommand> history = new ArrayList<>();
     private int pointer = -1; //index of current command in the history list
 
     public void execute(AbstractCommand command) {
@@ -59,5 +59,21 @@ public class CommandHistory {
 
     public void setMaxHistory(int MAX_HISTORY) {
         this.MAX_HISTORY = MAX_HISTORY;
+    }
+
+    public List<AbstractCommand> getList() {
+        return history;
+    }
+
+    public void setList(List<AbstractCommand> history) {
+        this.history = history;
+    }
+
+    public int getPointer() {
+        return pointer;
+    }
+
+    public void setPointer(int pointer) {
+        this.pointer = pointer;
     }
 }

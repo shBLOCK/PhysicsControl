@@ -2,12 +2,11 @@ package com.shblock.physicscontrol.client.gui;
 
 import com.jme3.bounding.BoundingBox;
 import com.jme3.bullet.PhysicsSpace;
-import com.jme3.bullet.RayTestFlag;
 import com.jme3.bullet.collision.shapes.SphereCollisionShape;
 import com.jme3.bullet.objects.PhysicsRigidBody;
 import com.jme3.math.Vector3f;
 import com.mojang.blaze3d.matrix.MatrixStack;
-import com.shblock.physicscontrol.client.InteractivePhysicsSimulator;
+import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
 import com.shblock.physicscontrol.command.CommandAddRigidBody;
 import com.shblock.physicscontrol.physics.util.BoundingBoxHelper;
 import com.shblock.physicscontrol.physics.util.NBTSerializer;
@@ -24,7 +23,6 @@ import static org.lwjgl.glfw.GLFW.*;
 
 public class GuiPhysicsSimulator extends ImGuiBase {
     private final ItemStack item;
-    private InteractivePhysicsSimulator simulator;
 
     private float globalScale = 100F;
     private float scaleSpeed = 0.05F;
@@ -43,7 +41,10 @@ public class GuiPhysicsSimulator extends ImGuiBase {
         } else {
             space = new PhysicsSpace(PhysicsSpace.BroadphaseType.DBVT); //TODO: make a config option of this
         }
-        this.simulator = new InteractivePhysicsSimulator(space);
+        new InteractivePhysicsSimulator2D(space);
+    }
+    private static InteractivePhysicsSimulator2D getSimulator() {
+        return InteractivePhysicsSimulator2D.getInstance();
     }
 
     public static GuiPhysicsSimulator tryGetInstance() {
@@ -56,13 +57,13 @@ public class GuiPhysicsSimulator extends ImGuiBase {
     @Override
     public void onClose() {
         super.onClose();
-        this.simulator.close();
+        getSimulator().close();
     }
 
     @Override
     public void tick() {
         super.tick();
-        this.simulator.tick();
+        getSimulator().tick();
     }
 
     @Override
@@ -77,10 +78,10 @@ public class GuiPhysicsSimulator extends ImGuiBase {
     @Override
     public void render(MatrixStack matrixStack, int combinedLight, int combinedOverlay, float particleTick) {
         super.render(matrixStack, combinedLight, combinedOverlay, particleTick);
-        this.simulator.frame(particleTick);
+        getSimulator().frame(particleTick);
 
         matrixStack.pushPose();
-        renderSpace(matrixStack, this.simulator.getSpace());
+        renderSpace(matrixStack, getSimulator().getSpace());
         matrixStack.popPose();
     }
 
@@ -141,10 +142,10 @@ public class GuiPhysicsSimulator extends ImGuiBase {
             PhysicsRigidBody body = new PhysicsRigidBody(new SphereCollisionShape(0.5F), 1F);
             body.setPhysicsLocation(toSpacePos(mouseX, mouseY).toVec3());
             body.setLinearVelocity(new Vector3f(10F, 0F, 0F));
-            this.simulator.executeCommand(new CommandAddRigidBody(body));
+            getSimulator().executeCommand(new CommandAddRigidBody(body));
             return true;
         } else if (button == 1) {
-            System.out.println(this.simulator.getSpace().rayTestRaw(
+            System.out.println(getSimulator().getSpace().rayTestRaw(
                     toSpacePos(mouseX, mouseY).toVec3().add(new Vector3f(0F, 0F, 10000)),
                     toSpacePos(mouseX, mouseY).toVec3().subtract(new Vector3f(0F, 0F, 10000))
             ));
@@ -175,23 +176,23 @@ public class GuiPhysicsSimulator extends ImGuiBase {
     public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
         switch (keyCode) {
             case GLFW_KEY_SPACE:
-                this.simulator.switchSimulationRunning();
+                getSimulator().switchSimulationRunning();
                 return true;
             case GLFW_KEY_Z:
                 if (hasControlDown()) {
-                    this.simulator.undo();
+                    getSimulator().undo();
                 }
                 return true;
             case GLFW_KEY_Y:
                 if (hasControlDown()) {
-                    this.simulator.redo();
+                    getSimulator().redo();
                 }
                 return true;
             case GLFW_KEY_S:
                 PhysicsRigidBody body = new PhysicsRigidBody(new SphereCollisionShape(0.5F), 1F);
                 body.setPhysicsLocation(new Vector3f(0F, 0F, 0F));
                 body.setLinearVelocity(new Vector3f(10F, 0F, 0F));
-                this.simulator.executeCommand(new CommandAddRigidBody(body));
+                getSimulator().executeCommand(new CommandAddRigidBody(body));
                 return true;
         }
         return false;

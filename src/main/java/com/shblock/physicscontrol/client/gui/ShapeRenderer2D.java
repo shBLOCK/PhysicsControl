@@ -4,9 +4,12 @@ import com.jme3.bullet.collision.shapes.CollisionShape;
 import com.jme3.bullet.collision.shapes.SphereCollisionShape;
 import com.jme3.bullet.objects.PhysicsRigidBody;
 import com.mojang.blaze3d.matrix.MatrixStack;
+import com.shblock.physicscontrol.physics.physics2d.CollisionObjectUserObj2D;
 import com.shblock.physicscontrol.physics.util.Vector2f;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.math.vector.Quaternion;
+
+import java.util.Random;
 
 public class ShapeRenderer2D {
     public static void drawRigidBody(MatrixStack matrixStack, PhysicsRigidBody body, boolean isSelected) {
@@ -24,13 +27,14 @@ public class ShapeRenderer2D {
         Matrix4f matrix = matrixStack.last().pose();
 
         CollisionShape shape = body.getCollisionShape();
-        float r = 0F;
-        float g = 1F;
-        float b = 0F;
-        float a = 1F;
-        float dr = r * RenderHelper.COLOR_DECREASE;
-        float dg = g * RenderHelper.COLOR_DECREASE;
-        float db = b * RenderHelper.COLOR_DECREASE;
+        CollisionObjectUserObj2D userObj = (CollisionObjectUserObj2D) body.getUserObject();
+        int r = userObj.r;
+        int g = userObj.g;
+        int b = userObj.b;
+        int a = userObj.alpha;
+        int dr = (int) (r * RenderHelper.COLOR_DECREASE);
+        int dg = (int) (g * RenderHelper.COLOR_DECREASE);
+        int db = (int) (b * RenderHelper.COLOR_DECREASE);
         if (shape instanceof SphereCollisionShape) {
             float radius = ((SphereCollisionShape) shape).getRadius();
 

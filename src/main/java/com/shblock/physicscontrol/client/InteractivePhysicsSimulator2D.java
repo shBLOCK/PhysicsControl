@@ -1,15 +1,21 @@
 package com.shblock.physicscontrol.client;
 
 import com.jme3.bullet.PhysicsSpace;
+import com.jme3.bullet.objects.PhysicsRigidBody;
 import com.shblock.physicscontrol.command.AbstractCommand;
 import com.shblock.physicscontrol.command.CommandHistory;
 import com.shblock.physicscontrol.command.CommandStartSimulation;
 import com.shblock.physicscontrol.command.CommandStopSimulation;
 
-public class InteractivePhysicsSimulator { //TODO: serialize this instead of space
-    private static InteractivePhysicsSimulator currentInstance;
+import java.util.HashMap;
+import java.util.Map;
+
+public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of space
+    private static InteractivePhysicsSimulator2D currentInstance;
 
     private PhysicsSpace space;
+    private final Map<Integer, Integer> zIndexes = new HashMap<>();
+    private int currentId = -1;
     private boolean simulationRunning;
     public enum StepModes {
         TICK, //step the simulation every tick (1/20 sec)
@@ -19,7 +25,7 @@ public class InteractivePhysicsSimulator { //TODO: serialize this instead of spa
     private float simulationSpeed = 1F;
     private CommandHistory commandHistory;
 
-    public InteractivePhysicsSimulator(PhysicsSpace space) {
+    public InteractivePhysicsSimulator2D(PhysicsSpace space) {
         if (currentInstance != null) {
             throw new RuntimeException("You have to close the last Instance to create a new one!");
         }
@@ -29,8 +35,12 @@ public class InteractivePhysicsSimulator { //TODO: serialize this instead of spa
         this.commandHistory = new CommandHistory();
     }
 
-    public static InteractivePhysicsSimulator getInstance() {
+    public static InteractivePhysicsSimulator2D getInstance() {
         return currentInstance;
+    }
+
+    public static void setInstance(InteractivePhysicsSimulator2D simulator) {
+        currentInstance = simulator;
     }
 
     public void close() {
@@ -67,6 +77,10 @@ public class InteractivePhysicsSimulator { //TODO: serialize this instead of spa
         this.space = new_space;
     }
 
+    public void addRigidBody(PhysicsRigidBody body) {
+
+    }
+
     public void executeCommand(AbstractCommand command) {
         this.commandHistory.execute(command);
     }
@@ -101,5 +115,37 @@ public class InteractivePhysicsSimulator { //TODO: serialize this instead of spa
         } else {
             executeCommand(new CommandStartSimulation());
         }
+    }
+
+    public float getSimulationSpeed() {
+        return simulationSpeed;
+    }
+
+    public void setSimulationSpeed(float simulationSpeed) {
+        this.simulationSpeed = simulationSpeed;
+    }
+
+    public int getCurrentId() {
+        return currentId;
+    }
+
+    public void setCurrentId(int currentId) {
+        this.currentId = currentId;
+    }
+
+    public CommandHistory getCommandHistory() {
+        return commandHistory;
+    }
+
+    public void setCommandHistory(CommandHistory commandHistory) {
+        this.commandHistory = commandHistory;
+    }
+
+    public int nextId() {
+        return this.currentId++;
+    }
+
+    public int getZIndex(int id) {
+        return this.zIndexes.get(id);
     }
 }

@@ -12,6 +12,12 @@ import com.jme3.bullet.objects.PhysicsRigidBody;
 import com.jme3.math.Matrix3f;
 import com.jme3.math.Plane;
 import com.jme3.math.Vector3f;
+import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
+import com.shblock.physicscontrol.command.AbstractCommand;
+import com.shblock.physicscontrol.command.CommandHistory;
+import com.shblock.physicscontrol.command.CommandSerializer;
+import com.shblock.physicscontrol.physics.UserObjBase;
+import com.shblock.physicscontrol.physics.physics2d.CollisionObjectUserObj2D;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.FloatNBT;
 import net.minecraft.nbt.ListNBT;
@@ -21,6 +27,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.logging.Level;
 
 public class NBTSerializer {
@@ -183,6 +190,9 @@ public class NBTSerializer {
         }
         nbt.putLongArray("ignored_ids", body.listIgnoredIds());
         nbt.putLong("id", body.nativeId()); //just for ignore list
+        if (body.getUserObject() != null) {
+            nbt.put("user_obj", ((UserObjBase) body.getUserObject()).serializeNBT());
+        }
         return nbt;
     }
 
@@ -226,6 +236,11 @@ public class NBTSerializer {
             body.setAnisotropicFriction(vec3FromNBT(nbt.getList("af_basic", Constants.NBT.TAG_FLOAT)), AfMode.basic);
         } else if (nbt.contains("af_rolling")) {
             body.setAnisotropicFriction(vec3FromNBT(nbt.getList("af_rolling", Constants.NBT.TAG_FLOAT)), AfMode.rolling);
+        }
+        if (nbt.contains("user_obj")) {
+            CollisionObjectUserObj2D obj = new CollisionObjectUserObj2D(0); //TODO: make it not only deserialize to CollisionObjectUserObj2D
+            obj.deserializeNBT(nbt.getCompound("user_obj"));
+            body.setUserObject(obj);
         }
         return body;
     }
@@ -318,5 +333,51 @@ public class NBTSerializer {
         PhysicsRigidBody[] bodies = readAllBody(nbt.getList("rigid_body_list", Constants.NBT.TAG_COMPOUND));
         Arrays.stream(bodies).forEach(world::addCollisionObject); //add all rigid bodies
         return world;
+    }
+
+    public static CompoundNBT toNBT(CommandHistory history) {
+        CompoundNBT nbt = new CompoundNBT();
+        ListNBT list = new ListNBT();
+        for (AbstractCommand command : history.getList()) {
+            list.add(CommandSerializer.toNBT(command));
+        }
+        nbt.put("list", list);
+        nbt.putInt("max", history.getMaxHistory());
+        nbt.putInt("pointer", history.getPointer());
+        return nbt;
+    }
+
+    public static CommandHistory historyFromNBT(CompoundNBT nbt) {
+        CommandHistory history = new CommandHistory();
+        List<AbstractCommand> list = new ArrayList<>();
+        ListNBT list_nbt = nbt.getList("list", Constants.NBT.TAG_COMPOUND);
+        for (int i=0; i<list_nbt.size(); i++) {
+            list.add(CommandSerializer.fromNBT(list_nbt.getCompound(i)));
+        }
+        history.setList(list);
+        history.setMaxHistory(nbt.getInt("max"));
+        history.setPointer(nbt.getInt("pointer"));
+        return history;
+    }
+
+    public static CompoundNBT toNBT(InteractivePhysicsSimulator2D simulator) {
+        CompoundNBT nbt = new CompoundNBT();
+        nbt.put("space", toNBT(simulator.getSpace()));
+        nbt.putInt("current_id", simulator.getCurrentId());
+        nbt.putInt("step_mode", simulator.getStepMode().ordinal());
+        nbt.putFloat("simulation_speed", simulator.getSimulationSpeed());
+//        nbt.put("command_history", toNBT(simulator.getCommandHistory()));
+        return nbt;
+    }
+
+    public static InteractivePhysicsSimulator2D simulator2DFromNBT(CompoundNBT nbt) {
+        CommandHistory history = InteractivePhysicsSimulator2D.getInstance().getCommandHistory();
+        InteractivePhysicsSimulator2D simulator = new InteractivePhysicsSimulator2D(physicsSpaceFromNBT(nbt.getCompound("space")));
+        simulator.setCommandHistory(history);
+        simulator.setCurrentId(nbt.getInt("current_id"));
+        simulator.setStepMode(InteractivePhysicsSimulator2D.StepModes.values()[nbt.getInt("step_mode")]);
+        simulator.setSimulationSpeed(nbt.getFloat("simulation_speed"));
+//        simulator.setCommandHistory(historyFromNBT(nbt.getCompound("command_history")));
+        return simulator;
     }
 }

@@ -17,6 +17,7 @@ public class CommandSerializer {
             register(clz.newInstance().getName(), clz);
         } catch (InstantiationException | IllegalAccessException e) {
             e.printStackTrace();
+            assert false;
         }
     }
 
@@ -40,6 +41,8 @@ public class CommandSerializer {
     }
 
     public static void init() {
+        register(CommandStartSimulation.class);
+        register(CommandStopSimulation.class);
         register(CommandAddRigidBody.class);
     }
 }
