@@ -12,6 +12,8 @@ import net.minecraft.util.math.vector.Quaternion;
 
 public class ShapeRenderer2D {
     private static final float Z_LEVEL_STEP = 0.001F;
+    public static float FRAME_WIDTH = 1F;
+    public static float SELECTED_FRAME_WIDTH = 5F;
 
     public static void drawCollisionObject(MatrixStack matrixStack, PhysicsCollisionObject body, boolean isSelected) {
         matrixStack.pushPose();
@@ -44,9 +46,9 @@ public class ShapeRenderer2D {
             RenderHelper.drawCircle(matrix, radius, r, g, b, a);
             RenderHelper.drawCircleDirection(matrix, radius, dr, dg, db, a);
             if (isSelected) {
-                RenderHelper.drawCircleFrame(matrix, radius, 3F, 1F, 1F, 1F, 1F);
+                RenderHelper.drawCircleFrame(matrix, radius, SELECTED_FRAME_WIDTH, 1F, 1F, 1F, 1F);
             } else {
-                RenderHelper.drawCircleFrame(matrix, radius, 1F, dr, dg, db, a);
+                RenderHelper.drawCircleFrame(matrix, radius, FRAME_WIDTH, dr, dg, db, a);
             }
         }
 

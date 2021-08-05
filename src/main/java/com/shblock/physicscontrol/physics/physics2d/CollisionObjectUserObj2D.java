@@ -80,6 +80,7 @@ public class CollisionObjectUserObj2D extends UserObjBase {
 
     @Override
     public void deserializeNBT(CompoundNBT nbt) {
+        super.deserializeNBT(nbt);
         this.zLevel = nbt.getInt("z_level");
         this.r = nbt.getInt("r");
         this.g = nbt.getInt("g");

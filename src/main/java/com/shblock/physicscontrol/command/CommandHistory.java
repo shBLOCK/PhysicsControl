@@ -18,6 +18,7 @@ public class CommandHistory {
         while (history.size() > pointer + 1) {
             history.remove(pointer + 1);
         }
+
         boolean didMerge = false;
         if (pointer > -1) {
             didMerge = history.get(pointer).mergeWith(command);

@@ -3,12 +3,15 @@ package com.shblock.physicscontrol.client.gui;
 import com.jme3.bounding.BoundingBox;
 import com.jme3.bullet.PhysicsSpace;
 import com.jme3.bullet.collision.PhysicsCollisionObject;
+import com.jme3.bullet.collision.PhysicsRayTestResult;
 import com.jme3.bullet.collision.shapes.SphereCollisionShape;
 import com.jme3.bullet.objects.PhysicsRigidBody;
 import com.jme3.math.Vector3f;
 import com.mojang.blaze3d.matrix.MatrixStack;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
 import com.shblock.physicscontrol.command.CommandAddRigidBody;
+import com.shblock.physicscontrol.command.CommandSingleStep;
+import com.shblock.physicscontrol.physics.physics2d.CollisionObjectUserObj2D;
 import com.shblock.physicscontrol.physics.util.BoundingBoxHelper;
 import com.shblock.physicscontrol.physics.util.NBTSerializer;
 import com.shblock.physicscontrol.physics.util.Vector2f;
@@ -20,6 +23,9 @@ import net.minecraft.util.text.StringTextComponent;
 
 import javax.annotation.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.lwjgl.glfw.GLFW.*;
 
 public class GuiPhysicsSimulator extends ImGuiBase {
@@ -28,6 +34,11 @@ public class GuiPhysicsSimulator extends ImGuiBase {
     private float globalScale = 100F;
     private float scaleSpeed = 0.05F;
     private Vector2f globalTranslate = new Vector2f(0F, 0F);
+
+    private State state = State.NONE;
+    private DrawShapes drawingShape = null;
+    private final List<Vector2f> drawPoints = new ArrayList<>();
+    private boolean isFirstMove = false;
 
     protected GuiPhysicsSimulator(@Nullable ItemStack item) {
         super(new StringTextComponent("Physics Simulator"));
@@ -94,7 +105,7 @@ public class GuiPhysicsSimulator extends ImGuiBase {
         BoundingBox screenBB = new BoundingBox(toSpacePos(0F, 0F).toVec3(), toSpacePos(width, height).toVec3());
         for (PhysicsCollisionObject body : space.getPcoList()) {
             if (BoundingBoxHelper.isOverlapping2D(body.boundingBox(null), screenBB)) {
-                ShapeRenderer2D.drawCollisionObject(matrixStack, body, false);
+                ShapeRenderer2D.drawCollisionObject(matrixStack, body, getSimulator().isSelected(body));
             }
         }
         matrixStack.popPose();
@@ -129,27 +140,92 @@ public class GuiPhysicsSimulator extends ImGuiBase {
     }
 
     @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        switch (button) {
+            case 0:
+                switch (this.state) {
+                    case NONE:
+                        if (getSimulator().isPointOnAnySelected(toSpacePos(mouseX, mouseY))) {
+                            this.state = State.MOVING;
+                            this.isFirstMove = true;
+                            return true;
+                        }
+                        return false;
+                }
+                return false;
+        }
+        return false;
+    }
+
+    @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
-        if (button == 2) {
-            this.globalTranslate.x += deltaX;
-            this.globalTranslate.y += deltaY;
+        switch (button) {
+            case 2:
+                this.globalTranslate.x += deltaX;
+                this.globalTranslate.y += deltaY;
+                return true;
+            case 0:
+                switch (this.state) {
+                    case MOVING:
+                        getSimulator().moveSelected(new Vector2f(deltaX, -deltaY).divideLocal(this.globalScale), this.isFirstMove);
+                        if (this.isFirstMove) {
+                            this.isFirstMove = false;
+                        }
+                        return true;
+                }
+                return false;
         }
         return false;
     }
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (button == 0) {
-            PhysicsRigidBody body = new PhysicsRigidBody(new SphereCollisionShape(0.5F), 1F);
-            body.setPhysicsLocation(toSpacePos(mouseX, mouseY).toVec3());
-            body.setLinearVelocity(new Vector3f(10F, 0F, 0F));
-            getSimulator().executeCommand(new CommandAddRigidBody(getSimulator().getSpace(), body));
-            return true;
-        } else if (button == 1) {
-            System.out.println(getSimulator().getSpace().rayTestRaw(
-                    toSpacePos(mouseX, mouseY).toVec3().add(new Vector3f(0F, 0F, 10000)),
-                    toSpacePos(mouseX, mouseY).toVec3().subtract(new Vector3f(0F, 0F, 10000))
-            ));
+        switch (button) {
+            case 0:
+                switch (this.state) {
+                    case NONE:
+                        List<PhysicsCollisionObject> results = getSimulator().pointTest(toSpacePos(mouseX, mouseY));
+                        if (results.isEmpty()) {
+                            if (!hasControlDown()) {
+                                getSimulator().unselectAll();
+                            }
+                        } else {
+                            PhysicsCollisionObject top = null;
+                            CollisionObjectUserObj2D top_usr_obj = null;
+                            for (PhysicsCollisionObject obj : results) {
+                                CollisionObjectUserObj2D usr_obj = (CollisionObjectUserObj2D) obj.getUserObject();
+                                if (top == null) {
+                                    top = obj;
+                                    top_usr_obj = usr_obj;
+                                } else if (usr_obj.getZLevel() > top_usr_obj.getZLevel()) {
+                                    top = obj;
+                                    top_usr_obj = usr_obj;
+                                }
+                            }
+
+                            if (hasControlDown()) {
+                                if (getSimulator().isSelected(top)) {
+                                    getSimulator().unselect(top);
+                                } else {
+                                    getSimulator().select(top);
+                                }
+                            } else {
+                                getSimulator().unselectAll();
+                                getSimulator().select(top);
+                            }
+                        }
+                        return true;
+                    case MOVING:
+                        this.state = State.NONE;
+                        return true;
+                }
+                return false;
+            case 1:
+                PhysicsRigidBody body = new PhysicsRigidBody(new SphereCollisionShape(0.5F), 1F);
+                body.setPhysicsLocation(toSpacePos(mouseX, mouseY).toVec3());
+                body.setLinearVelocity(new Vector3f(10F, 0F, 0F));
+                getSimulator().executeCommand(new CommandAddRigidBody(getSimulator().getSpace(), body));
+                return true;
         }
         return false;
     }
@@ -177,25 +253,50 @@ public class GuiPhysicsSimulator extends ImGuiBase {
     public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
         switch (keyCode) {
             case GLFW_KEY_SPACE:
-                getSimulator().switchSimulationRunning();
-                return true;
+                switch (this.state) {
+                    case NONE:
+                        getSimulator().switchSimulationRunning();
+                        return true;
+                }
+                return false;
             case GLFW_KEY_Z:
-                if (hasControlDown()) {
-                    getSimulator().undo();
+                switch (this.state) {
+                    case NONE:
+                        if (hasControlDown()) {
+                            getSimulator().undo();
+                        }
+                        return true;
                 }
-                return true;
+                return false;
             case GLFW_KEY_Y:
-                if (hasControlDown()) {
-                    getSimulator().redo();
+                switch (this.state) {
+                    case NONE:
+                        if (hasControlDown()) {
+                            getSimulator().redo();
+                        }
+                        return true;
                 }
-                return true;
+                return false;
             case GLFW_KEY_S:
-                PhysicsRigidBody body = new PhysicsRigidBody(new SphereCollisionShape(0.5F), 1F);
-                body.setPhysicsLocation(new Vector3f(0F, 0F, 0F));
-                body.setLinearVelocity(new Vector3f(10F, 0F, 0F));
-                getSimulator().executeCommand(new CommandAddRigidBody(getSimulator().getSpace(), body));
-                return true;
+                switch (this.state) {
+                    case NONE:
+                        int steps = 1;
+                        if (hasShiftDown()) {
+                            steps = (int) (1 / getSimulator().getSpace().getAccuracy());
+                        }
+                        getSimulator().executeCommand(new CommandSingleStep(steps));
+                        return true;
+                }
+                return false;
         }
         return false;
     }
+}
+
+enum State {
+    NONE, MOVING, DRAW
+}
+
+enum DrawShapes {
+    SPHERE, BOX, POLYGON
 }

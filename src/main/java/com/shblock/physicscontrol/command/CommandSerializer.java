@@ -44,5 +44,7 @@ public class CommandSerializer {
         register(CommandStartSimulation.class);
         register(CommandStopSimulation.class);
         register(CommandAddRigidBody.class);
+        register(CommandMoveCollisionObjects.class);
+        register(CommandSingleStep.class);
     }
 }
