@@ -66,6 +66,8 @@ public class GlobalImGuiRenderer {
 
         io = ImGui.getIO();
         io.setIniFilename(null); // We don't want to save .ini file
+//        io.addConfigFlags(ImGuiConfigFlags.NavEnableKeyboard);
+//        io.addConfigFlags(ImGuiConfigFlags.NavEnableSetMousePos);
         io.addConfigFlags(ImGuiConfigFlags.DockingEnable);
         io.addConfigFlags(ImGuiConfigFlags.ViewportsEnable);
         io.setBackendPlatformName("imgui_java_impl_glfw");
@@ -100,12 +102,12 @@ public class GlobalImGuiRenderer {
             }
         });
 
-        glfwSetMonitorCallback((windowId, event) -> {
-            if (isImGuiOpened()) {
-                imGuiGlfw.monitorCallback(windowId, event);
-                //TODO: add mc's MonitorHandler.onMonitorChange() callback function back?
-            }
-        });
+//        glfwSetMonitorCallback((windowId, event) -> {
+//            if (isImGuiOpened()) {
+//                imGuiGlfw.monitorCallback(windowId, event);
+//                //TODO: add mc's MonitorHandler.onMonitorChange() callback function back?
+//            }
+//        });
 
         io.setSetClipboardTextFn(new ImStrConsumer() {
             @Override
@@ -180,11 +182,24 @@ public class GlobalImGuiRenderer {
         int button = event.getButton();
         int action = event.getAction();
 
-        imGuiGlfw.mouseButtonCallback(windowPtr, button, action, event.getMods());
-//        System.out.println(io.getMouseHoveredViewport());
-//        if (io.getWantCaptureMouse()) {
-//            event.setCanceled(true);
-//        }
+        final boolean[] mouseDown = new boolean[5];
+
+        mouseDown[0] = button == GLFW_MOUSE_BUTTON_1 && action != GLFW_RELEASE;
+        mouseDown[1] = button == GLFW_MOUSE_BUTTON_2 && action != GLFW_RELEASE;
+        mouseDown[2] = button == GLFW_MOUSE_BUTTON_3 && action != GLFW_RELEASE;
+        mouseDown[3] = button == GLFW_MOUSE_BUTTON_4 && action != GLFW_RELEASE;
+        mouseDown[4] = button == GLFW_MOUSE_BUTTON_5 && action != GLFW_RELEASE;
+
+        io.setMouseDown(mouseDown);
+
+        if (!io.getWantCaptureMouse() && mouseDown[1]) {
+            ImGui.setWindowFocus(null);
+        }
+
+//        System.out.println(io.getWantCaptureMouse());
+        if (io.getWantCaptureMouse()) {
+            event.setCanceled(true);
+        }
     }
 
     //glfwScrollCallback
@@ -196,9 +211,9 @@ public class GlobalImGuiRenderer {
         }
 
         imGuiGlfw.scrollCallback(windowPtr, event.getScrollDelta(), event.getScrollDelta());
-//        if (io.getWantCaptureMouse()) {
-//            event.setCanceled(true);
-//        }
+        if (io.getWantCaptureMouse()) {
+            event.setCanceled(true);
+        }
     }
 
     @SubscribeEvent
@@ -215,11 +230,11 @@ public class GlobalImGuiRenderer {
         if (isImGuiOpened()) {
             this.needClose = true;
             startFrame();
-            setupDockSpace();
+//            setupDockSpace();
             ImGui.pushStyleColor(ImGuiCol.WindowBg, 15, 15, 15, 240);
             getCurrentImGuiScreen().buildImGui();
             ImGui.popStyleColor(1);
-            ImGui.popStyleColor(1); //pop ImGuiCol.ChildBg in setupDockspace()
+//            ImGui.popStyleColor(1); //pop ImGuiCol.ChildBg in setupDockspace()
             endFrame();
         }
     }
@@ -241,8 +256,9 @@ public class GlobalImGuiRenderer {
         }
     }
 
-    private void setupDockSpace() {
+    private void setupDockSpace() { //TODO: fix dock space always want to capture everything!!!
         MainWindow mc_window = mc.getWindow();
+
         int windowFlags = ImGuiWindowFlags.NoDocking;
 
         ImGuiViewport mainViewPort = ImGui.getMainViewport();
@@ -265,7 +281,7 @@ public class GlobalImGuiRenderer {
 
         ImGui.begin("Dockspace", new ImBoolean(true), windowFlags);
 
-        ImGui.dockSpace(ImGui.getID("Dockspace"), 0f, 0f, ImGuiDockNodeFlags.None);
+        ImGui.dockSpace(ImGui.getID("Dockspace"), 0F, 0F, ImGuiDockNodeFlags.None);
 
         ImGui.popStyleVar(2);
         ImGui.popStyleColor(2); //Don't pop ImGuiCol.ChildBg

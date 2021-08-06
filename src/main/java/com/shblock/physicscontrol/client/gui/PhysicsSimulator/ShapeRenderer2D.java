@@ -1,10 +1,14 @@
-package com.shblock.physicscontrol.client.gui;
+package com.shblock.physicscontrol.client.gui.PhysicsSimulator;
 
 import com.jme3.bullet.collision.PhysicsCollisionObject;
+import com.jme3.bullet.collision.shapes.Box2dShape;
 import com.jme3.bullet.collision.shapes.CollisionShape;
+import com.jme3.bullet.collision.shapes.GImpactCollisionShape;
 import com.jme3.bullet.collision.shapes.SphereCollisionShape;
+import com.jme3.math.Vector3f;
 import com.mojang.blaze3d.matrix.MatrixStack;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.shblock.physicscontrol.client.gui.RenderHelper;
 import com.shblock.physicscontrol.physics.physics2d.CollisionObjectUserObj2D;
 import com.shblock.physicscontrol.physics.util.Vector2f;
 import net.minecraft.util.math.vector.Matrix4f;
@@ -50,6 +54,17 @@ public class ShapeRenderer2D {
             } else {
                 RenderHelper.drawCircleFrame(matrix, radius, FRAME_WIDTH, dr, dg, db, a);
             }
+        } else if (shape instanceof Box2dShape) {
+            Box2dShape box = (Box2dShape) shape;
+            Vector3f size = box.getHalfExtents(null);
+            RenderHelper.drawBox(matrix, -size.x, -size.y, size.x, size.y, r / 256F, g / 256F, b / 256F, a / 256F);
+            if (isSelected) {
+                RenderHelper.drawBoxFrame(matrix, -size.x, -size.y, size.x, size.y, SELECTED_FRAME_WIDTH, 1F, 1F, 1F, 1F);
+            } else {
+                RenderHelper.drawBoxFrame(matrix, -size.x, -size.y, size.x, size.y, FRAME_WIDTH, dr / 256F, dg / 256F, db / 256F, a / 256F);
+            }
+        } else if (shape instanceof GImpactCollisionShape) {
+
         }
 
         RenderSystem.disableDepthTest();

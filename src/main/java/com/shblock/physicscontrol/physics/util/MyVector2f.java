@@ -302,4 +302,8 @@ public class MyVector2f {
         storeResult.y = result.y;
         return storeResult;
     }
+
+    public static double angle(Vector2f a, Vector2f b) {
+        return Math.acos((a.x * b.x + a.y * b.y) / (a.length() * b.length()));
+    }
 }

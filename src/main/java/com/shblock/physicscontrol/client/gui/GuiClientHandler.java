@@ -1,9 +1,8 @@
 package com.shblock.physicscontrol.client.gui;
 
+import com.shblock.physicscontrol.client.gui.PhysicsSimulator.GuiPhysicsSimulator;
 import net.minecraft.client.Minecraft;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.util.text.StringTextComponent;
 
 import javax.annotation.Nullable;
 

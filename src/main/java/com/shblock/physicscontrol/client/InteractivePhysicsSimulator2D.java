@@ -191,6 +191,13 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
         return false;
     }
 
+    public void selectAll() {
+        unselectAll();
+        for (PhysicsCollisionObject pco : getSpace().getPcoList()) {
+            select(pco);
+        }
+    }
+
     public boolean unselect(PhysicsCollisionObject obj) {
         return this.selectedObjects.remove(obj);
     }
@@ -216,10 +223,12 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
     }
 
     public AbstractCommand undo() {
+        unselectAll();
         return commandHistory.undo();
     }
 
     public AbstractCommand redo() {
+        unselectAll();
         return commandHistory.redo();
     }
 
