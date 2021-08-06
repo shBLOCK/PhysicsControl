@@ -18,6 +18,10 @@ public class CollisionObjectUserObj2D extends UserObjBase {
     }
 
     public void moveZLevelUp(PhysicsSpace space) {
+        if (this.zLevel >= space.countCollisionObjects() - 1) {
+            return;
+        }
+
         CollisionObjectUserObj2D closest = null;
         for (PhysicsCollisionObject obj : space.getPcoList()) {
             CollisionObjectUserObj2D u_obj = (CollisionObjectUserObj2D) obj.getUserObject();
@@ -41,6 +45,10 @@ public class CollisionObjectUserObj2D extends UserObjBase {
     }
 
     public void moveZLevelDown(PhysicsSpace space) {
+        if (this.zLevel <= 0) {
+            return;
+        }
+
         CollisionObjectUserObj2D closest = null;
         for (PhysicsCollisionObject obj : space.getPcoList()) {
             CollisionObjectUserObj2D u_obj = (CollisionObjectUserObj2D) obj.getUserObject();

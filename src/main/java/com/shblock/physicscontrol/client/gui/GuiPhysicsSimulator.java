@@ -19,6 +19,7 @@ import imgui.ImGui;
 import net.minecraft.client.Minecraft;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.util.ColorHelper;
 import net.minecraft.util.text.StringTextComponent;
 
 import javax.annotation.Nullable;
@@ -30,6 +31,9 @@ import static org.lwjgl.glfw.GLFW.*;
 
 public class GuiPhysicsSimulator extends ImGuiBase {
     private final ItemStack item;
+
+    private static final float MAX_SCALE = 100000F;
+    private static final float MIN_SCALE = 0.1F;
 
     private float globalScale = 100F;
     private float scaleSpeed = 0.05F;
@@ -85,6 +89,16 @@ public class GuiPhysicsSimulator extends ImGuiBase {
         ImGui.beginMainMenuBar();
         ImGui.text("test");
         ImGui.endMainMenuBar();
+
+//        if (ImGui.beginMenuBar()) {
+//            ImGui.text("a");
+//            ImGui.text("a");
+//            ImGui.text("a");
+//            ImGui.text("a");
+//            ImGui.text("a");
+//            ImGui.text("a");
+//            ImGui.endMenuBar();
+//        }
     }
 
     @Override
@@ -92,9 +106,9 @@ public class GuiPhysicsSimulator extends ImGuiBase {
         super.render(matrixStack, combinedLight, combinedOverlay, particleTick);
         getSimulator().frame(particleTick);
 
-        matrixStack.pushPose();
         renderSpace(matrixStack, getSimulator().getSpace());
-        matrixStack.popPose();
+
+        drawScaleMeasure(matrixStack);
     }
 
     private void renderSpace(MatrixStack matrixStack, PhysicsSpace space) {
@@ -108,6 +122,41 @@ public class GuiPhysicsSimulator extends ImGuiBase {
                 ShapeRenderer2D.drawCollisionObject(matrixStack, body, getSimulator().isSelected(body));
             }
         }
+        matrixStack.popPose();
+    }
+
+    private void drawScaleMeasure(MatrixStack matrixStack) {
+        matrixStack.pushPose();
+        int i = -5;
+        double pixel_length, space_length;
+        while (true) {
+            space_length = Math.pow(10, i);
+            pixel_length = space_length * this.globalScale;
+            if (pixel_length > 10) {
+                break;
+            } else {
+                i++;
+            }
+        }
+
+        int color = ColorHelper.PackedColor.color(255, 255, 255, 255);
+        int lineH = height - 10;
+        int start = (int) (width - 10 - pixel_length);
+        int end = width - 10;
+        hLine(matrixStack, start, end, lineH, color);
+        int sideLineLength = 4;
+        vLine(matrixStack, start, lineH - sideLineLength, lineH + sideLineLength, color);
+        vLine(matrixStack, end, lineH - sideLineLength, lineH + sideLineLength, color);
+
+        String text;
+        if (space_length >= 1) {
+            text = String.valueOf((int) space_length);
+        } else {
+            text = String.valueOf(space_length);
+        }
+        text += "m";
+        drawCenteredString(matrixStack, this.font, text, (int) (width - 10 - pixel_length / 2), height - 21, color);
+
         matrixStack.popPose();
     }
 
@@ -232,21 +281,30 @@ public class GuiPhysicsSimulator extends ImGuiBase {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        Vector2f old_pos = toSpacePos(mouseX, mouseY);
-
-        float old_scale = this.globalScale;
-        this.globalScale *= (float) (1 + this.scaleSpeed * delta);
-        if (this.globalScale <= 0F) {
-            this.globalScale = old_scale;
+        if (hasShiftDown()) {
+            if (getSimulator().isPointOnAnySelected(toSpacePos(mouseX, mouseY))) {
+                if (delta > 0) {
+                    getSimulator().changeSelectedZLevel(1);
+                } else {
+                    getSimulator().changeSelectedZLevel(-1);
+                }
+            }
+        } else {
+            Vector2f old_pos = toSpacePos(mouseX, mouseY);
+            float old_scale = this.globalScale;
+            this.globalScale *= (float) (1 + this.scaleSpeed * delta);
+            if (this.globalScale >= MAX_SCALE || this.globalScale <= MIN_SCALE) {
+                this.globalScale = old_scale;
+            } else {
+                Vector2f new_pos = toSpacePos(mouseX, mouseY);
+                Vector2f move = new_pos.subtract(old_pos);
+                move.y = -move.y;
+                move.multLocal(this.globalScale);
+                this.globalTranslate.addLocal(move);
+            }
+            return true;
         }
-
-        Vector2f new_pos = toSpacePos(mouseX, mouseY);
-        Vector2f move = new_pos.subtract(old_pos);
-        move.y = -move.y;
-        move.multLocal(this.globalScale);
-        this.globalTranslate.addLocal(move);
-
-        return true;
+        return false;
     }
 
     @Override
