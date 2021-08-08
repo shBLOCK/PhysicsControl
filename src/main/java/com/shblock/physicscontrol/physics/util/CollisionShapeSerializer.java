@@ -59,20 +59,12 @@ public class CollisionShapeSerializer {
         } else if (shape instanceof GImpactCollisionShape) {
             type = "g_impact";
             GImpactCollisionShape cs = (GImpactCollisionShape) shape;
-            try {
-                Field field = cs.getClass().getDeclaredField("nativeMesh");
-                field.setAccessible(true);
-                CompoundMesh mesh = (CompoundMesh) field.get(cs);
-                field.setAccessible(false);
-                nbt.put(
-                        "mesh",
-                        NBTSerializer.toNBT(
-                                mesh
-                        )
-                );
-            } catch (IllegalAccessException | NoSuchFieldException e) {
-                e.printStackTrace();
-            }
+            nbt.put(
+                    "mesh",
+                    NBTSerializer.toNBT(
+                            MeshHelper.getCompoundMesh(cs)
+                    )
+            );
         } else if (shape instanceof HeightfieldCollisionShape) {
             type = "height_field";
             HeightfieldCollisionShape cs = (HeightfieldCollisionShape) shape;
@@ -165,7 +157,7 @@ public class CollisionShapeSerializer {
     }
 
     public static CollisionShape fromNBT(CompoundNBT nbt) {
-        CollisionShape shape = null;
+        CollisionShape shape;
         switch (nbt.getString("type")) {
             case "box2d":
                 shape = new Box2dShape(
@@ -220,17 +212,10 @@ public class CollisionShapeSerializer {
                 break;
             case "g_impact":
                 CompoundMesh compoundMesh = NBTSerializer.cMeshFromNBT(nbt.getCompound("mesh"));
-                try {
-                    Field field = compoundMesh.getClass().getDeclaredField("submeshes");
-                    field.setAccessible(true);
-                    IndexedMesh[] meshes = (IndexedMesh[]) ((ArrayList<IndexedMesh>) field.get(compoundMesh)).toArray();
-                    field.setAccessible(false);
-                    shape = new GImpactCollisionShape(
-                            meshes
-                    );
-                } catch (IllegalAccessException | NoSuchFieldException e) {
-                    e.printStackTrace();
-                }
+                IndexedMesh[] meshes = MeshHelper.getSubMeshes(compoundMesh).toArray(new IndexedMesh[0]);
+                shape = new GImpactCollisionShape(
+                        meshes
+                );
                 break;
             case "height_field":
                 ListNBT hmn = nbt.getList("heightfieldData", Constants.NBT.TAG_FLOAT);
@@ -260,18 +245,11 @@ public class CollisionShapeSerializer {
                 break;
             case "mesh":
                 CompoundMesh mesh = NBTSerializer.cMeshFromNBT(nbt.getCompound("mesh"));
-                try {
-                    Field field = mesh.getClass().getDeclaredField("submeshes");
-                    field.setAccessible(true);
-                    IndexedMesh[] meshes = (IndexedMesh[]) ((ArrayList<IndexedMesh>) field.get(mesh)).toArray();
-                    field.setAccessible(false);
-                    shape = new MeshCollisionShape(
-                            nbt.getByteArray("bvh"),
-                            meshes
-                    );
-                } catch (IllegalAccessException | NoSuchFieldException e) {
-                    e.printStackTrace();
-                }
+                IndexedMesh[] sub_meshes = MeshHelper.getSubMeshes(mesh).toArray(new IndexedMesh[0]);
+                shape = new MeshCollisionShape(
+                        nbt.getByteArray("bvh"),
+                        sub_meshes
+                );
                 break;
             case "multi_sphere":
                 ListNBT spheres = nbt.getList("spheres", Constants.NBT.TAG_COMPOUND);

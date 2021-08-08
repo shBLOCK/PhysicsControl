@@ -1,5 +1,10 @@
 package com.shblock.physicscontrol.physics;
 
+import com.jme3.bullet.PhysicsSpace;
+import com.jme3.bullet.collision.shapes.GImpactCollisionShape;
+import com.jme3.bullet.collision.shapes.infos.IndexedMesh;
+import com.jme3.bullet.objects.PhysicsRigidBody;
+import com.jme3.math.Vector3f;
 import com.jme3.system.NativeLibraryLoader;
 import com.shblock.physicscontrol.PhysicsControl;
 import net.minecraft.client.Minecraft;

@@ -6,8 +6,11 @@ import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
 public class CommandStartSimulation extends PhysicsCommandBase {
     public CommandStartSimulation() {}
 
-    public CommandStartSimulation(PhysicsSpace space) {
-        super(space);
+    /**
+     * @param dummyValue NOT USER!!!  Just a dummy value for a different with the constructor on top
+     */
+    public CommandStartSimulation(boolean dummyValue) {
+        super(null);
     }
 
     @Override

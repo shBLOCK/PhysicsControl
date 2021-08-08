@@ -4,29 +4,26 @@ import com.jme3.bounding.BoundingBox;
 import com.jme3.bullet.PhysicsSpace;
 import com.jme3.bullet.collision.PhysicsCollisionObject;
 import com.jme3.bullet.collision.shapes.Box2dShape;
+import com.jme3.bullet.collision.shapes.GImpactCollisionShape;
 import com.jme3.bullet.collision.shapes.SphereCollisionShape;
+import com.jme3.bullet.collision.shapes.infos.IndexedMesh;
 import com.jme3.bullet.objects.PhysicsRigidBody;
 import com.jme3.math.Quaternion;
-import com.jme3.math.Vector3f;
 import com.mojang.blaze3d.matrix.MatrixStack;
-import com.shblock.physicscontrol.PhysicsControl;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
+import com.shblock.physicscontrol.client.gui.GlobalImGuiRenderer;
 import com.shblock.physicscontrol.client.gui.ImGuiBase;
 import com.shblock.physicscontrol.client.gui.RenderHelper;
 import com.shblock.physicscontrol.command.CommandAddRigidBody;
 import com.shblock.physicscontrol.command.CommandSingleStep;
 import com.shblock.physicscontrol.physics.physics2d.CollisionObjectUserObj2D;
-import com.shblock.physicscontrol.physics.util.BoundingBoxHelper;
-import com.shblock.physicscontrol.physics.util.MyVector2f;
-import com.shblock.physicscontrol.physics.util.NBTSerializer;
-import com.shblock.physicscontrol.physics.util.Vector2f;
+import com.shblock.physicscontrol.physics.util.*;
 import imgui.ImGui;
-import imgui.flag.ImGuiWindowFlags;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.I18n;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.util.ColorHelper;
-import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.text.StringTextComponent;
 
@@ -35,6 +32,7 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.lwjgl.glfw.GLFW.*;
 
@@ -43,6 +41,8 @@ public class GuiPhysicsSimulator extends ImGuiBase {
 
     private static final float MAX_SCALE = 100000F;
     private static final float MIN_SCALE = 0.1F;
+    private static final int ANGLE_STEP = 6;
+    private static final double PER_STEP = Math.PI / 6;
 
     private float globalScale = 100F;
     private float scaleSpeed = 0.05F;
@@ -52,6 +52,11 @@ public class GuiPhysicsSimulator extends ImGuiBase {
     private DrawShapes drawingShape = null;
     private Tools currentTool = Tools.DRAW_SPHERE;
     private final List<Vector2f> drawPoints = new ArrayList<>();
+
+    private int currentGuiId = "gui".hashCode();
+    private List<PcoEditGui> pcoEditGuis = new ArrayList<>();
+
+    private double currentMouseX = 0, currentMouseY = 0;
 
     public GuiPhysicsSimulator(@Nullable ItemStack item) {
         super(new StringTextComponent("Physics Simulator"));
@@ -100,6 +105,18 @@ public class GuiPhysicsSimulator extends ImGuiBase {
         if (this.state == State.DRAW) {
             buildImGuiDrawing();
         }
+
+        for (int i=0; i<this.pcoEditGuis.size(); i++) {
+            if (!this.pcoEditGuis.get(i).buildImGui()) {
+                this.pcoEditGuis.remove(i);
+                i--;
+            }
+        }
+    }
+
+    public int getNextGuiId() {
+        this.currentGuiId++;
+        return this.currentGuiId;
     }
 
     @Override
@@ -152,37 +169,44 @@ public class GuiPhysicsSimulator extends ImGuiBase {
         matrixStack.pushPose();
 
         Vector2f start, end;
+        Matrix4f matrix;
         switch (this.drawingShape) {
             case SPHERE:
                 start = this.drawPoints.get(0).clone();
                 end = this.drawPoints.get(1).clone();
-                if (hasShiftDown()) {
-                    toSquare(start, end);
-                }
                 matrixStack.translate(start.x, -start.y, 0F);
-                float angle = (float) MyVector2f.angle(end.subtract(start), new Vector2f(0F, 1F));
+                double angle = MyVector2f.angle(end.subtract(start), new Vector2f(0F, 1F));
+                if (hasShiftDown()) {
+                    double step = angle / PER_STEP;
+                    int steps = (int) Math.round(step);
+                    angle = PER_STEP * steps;
+                }
                 if (end.subtract(start).x < 0F) {
                     angle = -angle;
                 }
                 matrixStack.mulPose(
-                        new net.minecraft.util.math.vector.Quaternion(0F, 0F, angle, false)
+                        new net.minecraft.util.math.vector.Quaternion(0F, 0F, (float) angle, false)
                 );
-                Matrix4f matrix = matrixStack.last().pose();
+                matrix = matrixStack.last().pose();
                 float radius = end.subtract(start).length();
                 RenderHelper.drawCircleDirection(matrix, radius, 1F, 1F, 1F, 1F);
                 RenderHelper.drawCircleFrame(matrix, radius, ShapeRenderer2D.SELECTED_FRAME_WIDTH, 1F, 1F, 1F, 1F);
-                return;
+                break;
             case BOX:
                 start = this.drawPoints.get(0).clone();
                 end = this.drawPoints.get(1).clone();
                 if (hasShiftDown()) {
                     toSquare(start, end);
                 }
-                Matrix4f matrix4f = matrixStack.last().pose();
-                RenderHelper.drawBoxFrame(matrix4f, start.x, -start.y, end.x, -end.y, ShapeRenderer2D.SELECTED_FRAME_WIDTH, 1F, 1F, 1F, 1F);
-                return;
+                matrix = matrixStack.last().pose();
+                RenderHelper.drawBoxFrame(matrix, start.x, -start.y, end.x, -end.y, ShapeRenderer2D.SELECTED_FRAME_WIDTH, 1F, 1F, 1F, 1F);
+                break;
             case POLYGON:
-                return;
+                matrix = matrixStack.last().pose();
+                List<Vector2f> vertexes = this.drawPoints.stream().map(vec -> new Vector2f(vec.x, -vec.y)).collect(Collectors.toList());
+                RenderHelper.drawPolygon(matrix, vertexes, 1F, 1F, 1F, 0.3F);
+                RenderHelper.drawPolygonFrame(matrix, vertexes, ShapeRenderer2D.SELECTED_FRAME_WIDTH, 1F, 1F, 1F, 1F);
+                break;
         }
 
         matrixStack.popPose();
@@ -195,7 +219,19 @@ public class GuiPhysicsSimulator extends ImGuiBase {
                 Vector2f end = this.drawPoints.get(1).clone();
                 float radius = start.subtract(end).length();
                 ImGui.beginTooltip();
-                ImGui.text(String.format("Radius: %.3fm", radius));
+                ImGui.text(I18n.get("physicscontrol.gui.sim.tooltip.radius", radius));
+
+                double angle = MyVector2f.angle(end.subtract(start), new Vector2f(0F, 1F));
+                if (hasShiftDown()) {
+                    double step = angle / PER_STEP;
+                    int steps = (int) Math.round(step);
+                    angle = PER_STEP * steps;
+                }
+                if (end.subtract(start).x < 0F) {
+                    angle = -angle;
+                }
+                ImGui.text(I18n.get("physicscontrol.gui.sim.tooltip.angle", Math.toDegrees(angle)));
+
                 ImGui.endTooltip();
                 return;
             case BOX:
@@ -208,12 +244,11 @@ public class GuiPhysicsSimulator extends ImGuiBase {
                 Vector2f offset = end.subtract(start);
 
                 ImGui.beginTooltip();
-                ImGui.text(String.format("Width: %.3fm", Math.abs(offset.x)));
-                ImGui.text(String.format("Height: %.3fm", Math.abs(offset.y)));
+                ImGui.text(I18n.get("physicscontrol.gui.sim.tooltip.width", Math.abs(offset.x)));
+                ImGui.text(I18n.get("physicscontrol.gui.sim.tooltip.height", Math.abs(offset.y)));
                 ImGui.endTooltip();
                 return;
             case POLYGON:
-                return;
         }
     }
 
@@ -246,8 +281,7 @@ public class GuiPhysicsSimulator extends ImGuiBase {
         } else {
             text = String.valueOf(space_length);
         }
-        text += "m";
-        drawCenteredString(matrixStack, this.font, text, (int) (width - 10 - pixel_length / 2), height - 21, color);
+        drawCenteredString(matrixStack, this.font, I18n.get("physicscontrol.gui.sim.scale_measure", text), (int) (width - 10 - pixel_length / 2), height - 21, color);
 
         matrixStack.popPose();
     }
@@ -289,11 +323,98 @@ public class GuiPhysicsSimulator extends ImGuiBase {
     }
 
     @Override
+    public void mouseMoved(double mouseX, double mouseY) {
+        if (GlobalImGuiRenderer.io.getWantCaptureMouse()) {
+            return;
+        }
+
+        double deltaX = mouseX - this.currentMouseX;
+        double deltaY = mouseY - this.currentMouseY;
+        this.currentMouseX = mouseX;
+        this.currentMouseY = mouseY;
+
+        if (GlobalImGuiRenderer.io.getMouseDown(2)) {
+            this.globalTranslate.x += deltaX;
+            this.globalTranslate.y += deltaY;
+        }
+        if (GlobalImGuiRenderer.io.getMouseDown(0)) {
+            switch (this.state) {
+                case NONE:
+                    if (getSimulator().isPointOnAnySelected(toSpacePos(mouseX, mouseY))) {
+                        this.state = State.MOVING;
+                        getSimulator().moveSelected(new Vector2f(deltaX, -deltaY).divideLocal(this.globalScale), true);
+                        return;
+                    }
+                    return;
+                case MOVING:
+                    getSimulator().moveSelected(new Vector2f(deltaX, -deltaY).divideLocal(this.globalScale), false);
+                    return;
+                case DRAW:
+                    switch (this.drawingShape) {
+                        case SPHERE:
+                            this.drawPoints.set(1, toSpacePos(mouseX, mouseY));
+                            return;
+                        case BOX:
+                            this.drawPoints.set(1, toSpacePos(mouseX, mouseY));
+                            return;
+                        case POLYGON:
+                            this.drawPoints.set(this.drawPoints.size() - 1, toSpacePos(mouseX, mouseY));
+                            return;
+                    }
+                    return;
+            }
+        }
+    }
+
+    @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         switch (button) {
             case 0:
                 switch (this.state) {
                     case NONE:
+                        if (getSimulator().isPointOnAnySelected(toSpacePos(mouseX, mouseY))) {
+                            return false;
+                        }
+                        switch (this.currentTool) {
+                            case DRAW_SPHERE:
+                                this.state = State.DRAW;
+                                this.drawingShape = DrawShapes.SPHERE;
+                                this.drawPoints.clear();
+                                this.drawPoints.add(toSpacePos(mouseX, mouseY));
+                                this.drawPoints.add(toSpacePos(mouseX, mouseY)); // add the point twice to init both index 0 and 1
+                                return true;
+                            case DRAW_BOX:
+                                this.state = State.DRAW;
+                                this.drawingShape = DrawShapes.BOX;
+                                this.drawPoints.clear();
+                                this.drawPoints.add(toSpacePos(mouseX, mouseY));
+                                this.drawPoints.add(toSpacePos(mouseX, mouseY)); // add the point twice to init both index 0 and 1
+                                return true;
+                            case DRAW_POLYGON:
+                                this.state = State.DRAW;
+                                this.drawingShape = DrawShapes.POLYGON;
+                                this.drawPoints.clear();
+                                this.drawPoints.add(toSpacePos(mouseX, mouseY));
+                                this.drawPoints.add(toSpacePos(mouseX, mouseY));
+                                return true;
+                        }
+                        return false;
+                }
+                return false;
+            case 1:
+                switch (this.state) {
+                    case DRAW:
+                        switch (this.drawingShape) {
+                            case POLYGON:
+                                Vector2f new_vertex = toSpacePos(currentMouseX, currentMouseY);
+                                if (this.drawPoints.size() >= 2) {
+                                    if (new_vertex.equals(this.drawPoints.get(this.drawPoints.size() - 1)) && new_vertex.equals(this.drawPoints.get(this.drawPoints.size() - 2))) {
+                                        return false;
+                                    }
+                                }
+                                this.drawPoints.add(new_vertex);
+                                return true;
+                        }
                         return false;
                 }
                 return false;
@@ -303,66 +424,41 @@ public class GuiPhysicsSimulator extends ImGuiBase {
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
-        switch (button) {
-            case 2:
-                this.globalTranslate.x += deltaX;
-                this.globalTranslate.y += deltaY;
-                return true;
-            case 0:
-                switch (this.state) {
-                    case NONE:
-                        if (getSimulator().isPointOnAnySelected(toSpacePos(mouseX, mouseY))) {
-                            this.state = State.MOVING;
-                            getSimulator().moveSelected(new Vector2f(deltaX, -deltaY).divideLocal(this.globalScale), true);
-                            return true;
-                        } else {
-                            switch (this.currentTool) {
-                                case DRAW_SPHERE:
-                                    this.state = State.DRAW;
-                                    this.drawingShape = DrawShapes.SPHERE;
-                                    this.drawPoints.clear();
-                                    this.drawPoints.add(toSpacePos(mouseX, mouseY));
-                                    this.drawPoints.add(toSpacePos(mouseX, mouseY)); // add the point twice to init both index 0 and 1
-                                    return true;
-                                case DRAW_BOX:
-                                    this.state = State.DRAW;
-                                    this.drawingShape = DrawShapes.BOX;
-                                    this.drawPoints.clear();
-                                    this.drawPoints.add(toSpacePos(mouseX, mouseY));
-                                    this.drawPoints.add(toSpacePos(mouseX, mouseY)); // add the point twice to init both index 0 and 1
-                                    return true;
-                                case DRAW_POLYGON:
-                                    this.state = State.DRAW;
-                                    this.drawingShape = DrawShapes.POLYGON;
-                                    this.drawPoints.clear();
-                                    this.drawPoints.add(toSpacePos(mouseX, mouseY));
-                                    return true;
-                            }
-                            return false;
-                        }
-                    case MOVING:
-                        getSimulator().moveSelected(new Vector2f(deltaX, -deltaY).divideLocal(this.globalScale), false);
-                        return true;
-                    case DRAW:
-                        switch (this.drawingShape) {
-                            case SPHERE:
-                                this.drawPoints.set(1, toSpacePos(mouseX, mouseY));
-                                return true;
-                            case BOX:
-                                this.drawPoints.set(1, toSpacePos(mouseX, mouseY));
-                                return true;
-                            case POLYGON:
-                                if (hasShiftDown()) {
-                                    this.drawPoints.set(this.drawPoints.size() - 1, toSpacePos(mouseX, mouseY));
-                                } else {
-                                    this.drawPoints.add(toSpacePos(mouseX, mouseY));
-                                }
-                                return true;
-                        }
-                        return false;
-                }
-                return false;
-        }
+//        switch (button) {
+//            case 2:
+//                this.globalTranslate.x += deltaX;
+//                this.globalTranslate.y += deltaY;
+//                return true;
+//            case 0:
+//                switch (this.state) {
+//                    case NONE:
+//                        if (getSimulator().isPointOnAnySelected(toSpacePos(mouseX, mouseY))) {
+//                            this.state = State.MOVING;
+//                            getSimulator().moveSelected(new Vector2f(deltaX, -deltaY).divideLocal(this.globalScale), true);
+//                            return true;
+//                        } else {
+//                            return false;
+//                        }
+//                    case MOVING:
+//                        getSimulator().moveSelected(new Vector2f(deltaX, -deltaY).divideLocal(this.globalScale), false);
+//                        return true;
+//                    case DRAW:
+//                        switch (this.drawingShape) {
+//                            case SPHERE:
+//                                this.drawPoints.set(1, toSpacePos(mouseX, mouseY));
+//                                return true;
+//                            case BOX:
+//                                this.drawPoints.set(1, toSpacePos(mouseX, mouseY));
+//                                return true;
+//                            case POLYGON:
+//                                this.drawPoints.set(this.drawPoints.size() - 1, toSpacePos(mouseX, mouseY));
+//                                return true;
+//                        }
+//                        return false;
+//                }
+//                return false;
+//        }
+//        return false;
         return false;
     }
 
@@ -372,24 +468,13 @@ public class GuiPhysicsSimulator extends ImGuiBase {
             case 0:
                 switch (this.state) {
                     case NONE:
-                        List<PhysicsCollisionObject> results = getSimulator().pointTest(toSpacePos(mouseX, mouseY));
+                        List<PhysicsCollisionObject> results = getSimulator().pointTestSorted(toSpacePos(mouseX, mouseY));
                         if (results.isEmpty()) {
                             if (!hasControlDown()) {
                                 getSimulator().unselectAll();
                             }
                         } else {
-                            PhysicsCollisionObject top = null;
-                            CollisionObjectUserObj2D top_usr_obj = null;
-                            for (PhysicsCollisionObject obj : results) {
-                                CollisionObjectUserObj2D usr_obj = (CollisionObjectUserObj2D) obj.getUserObject();
-                                if (top == null) {
-                                    top = obj;
-                                    top_usr_obj = usr_obj;
-                                } else if (usr_obj.getZLevel() > top_usr_obj.getZLevel()) {
-                                    top = obj;
-                                    top_usr_obj = usr_obj;
-                                }
-                            }
+                            PhysicsCollisionObject top = results.get(0);
 
                             if (hasControlDown()) {
                                 if (getSimulator().isSelected(top)) {
@@ -407,7 +492,38 @@ public class GuiPhysicsSimulator extends ImGuiBase {
                         this.state = State.NONE;
                         return true;
                     case DRAW:
+                        switch (this.drawingShape) {
+                            case SPHERE:
+                            case BOX:
+                                if (this.drawPoints.get(0).equals(this.drawPoints.get(1))) {
+                                    this.state = State.NONE;
+                                    this.drawingShape = null;
+                                    this.drawPoints.clear();
+                                    return mouseReleased(mouseX, mouseY, button);
+                                }
+                                break;
+                            case POLYGON:
+                                if (this.drawPoints.size() < 3) {
+                                    this.state = State.NONE;
+                                    this.drawingShape = null;
+                                    this.drawPoints.clear();
+                                    return mouseReleased(mouseX, mouseY, button);
+                                }
+                                break;
+                        }
                         endShape();
+                        return true;
+                }
+                return false;
+            case 1:
+                switch (this.state) {
+                    case NONE:
+                        List<PhysicsCollisionObject> results = getSimulator().pointTestSorted(toSpacePos(mouseX, mouseY));
+                        if (results.isEmpty()) {
+                            return false;
+                        }
+                        getSimulator().select(results.get(0));
+                        this.pcoEditGuis.add(new PcoEditGui(getNextGuiId(), ((CollisionObjectUserObj2D) results.get(0).getUserObject()).getId()));
                         return true;
                 }
                 return false;
@@ -440,6 +556,11 @@ public class GuiPhysicsSimulator extends ImGuiBase {
             }
             return true;
         }
+        return false;
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         return false;
     }
 
@@ -492,6 +613,16 @@ public class GuiPhysicsSimulator extends ImGuiBase {
                         return false;
                 }
                 return false;
+            case GLFW_KEY_DELETE:
+                switch (this.state) {
+                    case NONE:
+                        if (getSimulator().isAnySelected()) {
+                            getSimulator().deleteSelected();
+                            return true;
+                        }
+                        return false;
+                }
+                return false;
             case GLFW_KEY_ESCAPE:
                 switch (this.state) {
                     case NONE:
@@ -514,7 +645,12 @@ public class GuiPhysicsSimulator extends ImGuiBase {
             case SPHERE:
                 start = this.drawPoints.get(0);
                 end = this.drawPoints.get(1);
-                float angle = (float) MyVector2f.angle(end.subtract(start), new Vector2f(0F, 1F));
+                double angle = MyVector2f.angle(end.subtract(start), new Vector2f(0F, 1F));
+                if (hasShiftDown()) {
+                    double step = angle / PER_STEP;
+                    int steps = (int) Math.round(step);
+                    angle = PER_STEP * steps;
+                }
                 if (end.subtract(start).x < 0F) {
                     angle = -angle;
                 }
@@ -524,7 +660,7 @@ public class GuiPhysicsSimulator extends ImGuiBase {
                         )
                 );
                 body.setPhysicsLocation(start.toVec3());
-                body.setPhysicsRotation(new Quaternion().fromAngles(0F, 0F, angle));
+                body.setPhysicsRotation(new Quaternion().fromAngles(0F, 0F, (float) angle));
                 break;
             case BOX:
                 start = this.drawPoints.get(0).clone();
@@ -543,22 +679,51 @@ public class GuiPhysicsSimulator extends ImGuiBase {
                 body.setPhysicsLocation(start.add(offset.multLocal(0.5F)).toVec3());
                 break;
             case POLYGON:
-                return;
+                if (drawPoints.size() < 3) {
+                    break;
+                }
+
+                for (int i=0; i<this.drawPoints.size()-1; i++) { // remove repeat points
+                    while (i + 1 < this.drawPoints.size() && this.drawPoints.get(i).equals(this.drawPoints.get(i + 1))) {
+                        this.drawPoints.remove(i);
+                    }
+                }
+
+                for (int i=1; i<this.drawPoints.size(); i++) {
+                    this.drawPoints.get(i).subtractLocal(this.drawPoints.get(0));
+                }
+                Vector2f pos = this.drawPoints.get(0).clone();
+                this.drawPoints.get(0).set(0F, 0F);
+
+                IndexedMesh mesh = MeshHelper.create2DPolygon(this.drawPoints.toArray(new Vector2f[0]));
+
+                if (mesh == null) {
+                    break;
+                }
+
+                body = new PhysicsRigidBody(
+                        new GImpactCollisionShape(
+                                mesh
+                        )
+                );
+                body.setPhysicsLocation(pos.toVec3());
+                break;
         }
 
-        if (hasAltDown()) {
-            Collection<PhysicsCollisionObject> results = getSimulator().contactTest(body);
-            getSimulator().unselectAll();
-            for (PhysicsCollisionObject pco : results) {
-                getSimulator().select(pco);
+        if (body != null) {
+            if (hasAltDown()) {
+                Collection<PhysicsCollisionObject> results = getSimulator().contactTest(body);
+                getSimulator().unselectAll();
+                for (PhysicsCollisionObject pco : results) {
+                    getSimulator().select(pco);
+                }
+            } else {
+                getSimulator().executeCommand(
+                        new CommandAddRigidBody(
+                                body
+                        )
+                );
             }
-        } else {
-            getSimulator().executeCommand(
-                    new CommandAddRigidBody(
-                            getSimulator().getSpace(),
-                            body
-                    )
-            );
         }
 
         this.state = State.NONE;
@@ -589,14 +754,16 @@ enum DrawShapes {
 }
 
 enum Tools {
-    DRAW_SPHERE(0, 0),
-    DRAW_BOX(1, 0),
-    DRAW_POLYGON(2, 0);
+    DRAW_SPHERE(0, 0, "physicscontrol.gui.sim.name.sphere"),
+    DRAW_BOX(1, 0, "physicscontrol.gui.sim.name.box"),
+    DRAW_POLYGON(2, 0, "physicscontrol.gui.sim.name.polygon");
 
     public float u, v;
+    public String localizeName;
 
-    Tools(int iconX, int iconY) {
+    Tools(int iconX, int iconY, String localizeName) {
         this.u = iconX * 0.125F;
         this.v = iconY * 0.125F;
+        this.localizeName = localizeName;
     }
 }

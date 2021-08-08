@@ -9,7 +9,7 @@ public class CommandSingleStep extends PhysicsCommandBase {
     public CommandSingleStep() {}
 
     public CommandSingleStep(int steps) {
-        super(InteractivePhysicsSimulator2D.getInstance().getSpace());
+        super(null);
         this.steps = steps;
     }
 

@@ -1,10 +1,9 @@
 package com.shblock.physicscontrol.client;
 
+import com.google.common.collect.Lists;
 import com.jme3.bullet.PhysicsSpace;
-import com.jme3.bullet.RayTestFlag;
 import com.jme3.bullet.collision.PhysicsCollisionObject;
 import com.jme3.bullet.collision.PhysicsRayTestResult;
-import com.jme3.bullet.collision.shapes.SphereCollisionShape;
 import com.jme3.bullet.objects.PhysicsGhostObject;
 import com.jme3.bullet.objects.PhysicsRigidBody;
 import com.jme3.math.Vector3f;
@@ -12,10 +11,7 @@ import com.shblock.physicscontrol.command.*;
 import com.shblock.physicscontrol.physics.physics2d.CollisionObjectUserObj2D;
 import com.shblock.physicscontrol.physics.util.Vector2f;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of space
@@ -90,8 +86,39 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
         }
     }
 
+    public PhysicsCollisionObject getPcoFromId(int id) {
+        for (PhysicsCollisionObject pco : getSpace().getPcoList()) {
+            if (((CollisionObjectUserObj2D) pco.getUserObject()).getId() == id) {
+                return pco;
+            }
+        }
+        return null;
+    }
+
+    public void addPco(PhysicsCollisionObject pco) {
+        getSpace().addCollisionObject(pco);
+    }
+
+    public void movePco(PhysicsCollisionObject pco, Vector2f offset) {
+        Vector3f pos = pco.getPhysicsLocation(null).add(offset.toVec3());
+        if (pco instanceof PhysicsRigidBody) {
+            ((PhysicsRigidBody) pco).setPhysicsLocation(pos);
+        } else if (pco instanceof PhysicsGhostObject) {
+            ((PhysicsGhostObject) pco).setPhysicsLocation(pos);
+        }
+        InteractivePhysicsSimulator2D.getInstance().reAddToUpdate(pco);
+    }
+
+    public void deletePco(PhysicsCollisionObject pco) {
+        getSpace().removeCollisionObject(pco);
+    }
+
     public void moveSelected(Vector2f offset, boolean isFirst) {
         executeCommand(new CommandMoveCollisionObjects(this.selectedObjects, offset.toVec3(), isFirst));
+    }
+
+    public void deleteSelected() {
+        executeCommand(new CommandDeleteCollisionObjects(this.selectedObjects));
     }
 
     /**
@@ -144,23 +171,22 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
         ).stream().map(PhysicsRayTestResult::getCollisionObject).collect(Collectors.toList());
     }
 
+    public List<PhysicsCollisionObject> pointTestSorted(Vector2f point) {
+        List<PhysicsCollisionObject> result = pointTest(point);
+        result.sort(Comparator.comparingInt(a -> ((CollisionObjectUserObj2D) a.getUserObject()).getZLevel()));
+        result = Lists.reverse(result);
+        return result;
+    }
+
     public boolean isPointOnAnySelected(Vector2f point) {
         if (!isAnySelected()) {
             return false;
         }
-        PhysicsCollisionObject top = null;
-        CollisionObjectUserObj2D top_usr_obj = null;
-        for (PhysicsCollisionObject obj : pointTest(point)) {
-            CollisionObjectUserObj2D usr_obj = (CollisionObjectUserObj2D) obj.getUserObject();
-            if (top == null) {
-                top = obj;
-                top_usr_obj = usr_obj;
-            } else if (usr_obj.getZLevel() > top_usr_obj.getZLevel()) {
-                top = obj;
-                top_usr_obj = usr_obj;
-            }
+        List<PhysicsCollisionObject> results = pointTestSorted(point);
+        if (results.isEmpty()) {
+            return false;
         }
-        return isSelected(top);
+        return isSelected(results.get(0));
     }
 
     public Collection<PhysicsCollisionObject> contactTest(PhysicsCollisionObject pco) {
@@ -175,17 +201,17 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
         return results;
     }
 
-    public boolean isSelected(PhysicsCollisionObject obj) {
-        return this.selectedObjects.contains(obj);
+    public boolean isSelected(PhysicsCollisionObject pco) {
+        return this.selectedObjects.contains(pco);
     }
 
     public boolean isAnySelected() {
         return !this.selectedObjects.isEmpty();
     }
 
-    public boolean select(PhysicsCollisionObject obj) {
-        if (!isSelected(obj)) {
-            this.selectedObjects.add(obj);
+    public boolean select(PhysicsCollisionObject pco) {
+        if (!isSelected(pco)) {
+            this.selectedObjects.add(pco);
             return true;
         }
         return false;
@@ -212,10 +238,6 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
 
     public void setSpace(PhysicsSpace new_space) {
         this.space = new_space;
-    }
-
-    public void addRigidBody(PhysicsRigidBody body) {
-        getSpace().addCollisionObject(body);
     }
 
     public void executeCommand(AbstractCommand command) {
@@ -252,7 +274,7 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
         if (isSimulationRunning()) {
             executeCommand(new CommandStopSimulation());
         } else {
-            executeCommand(new CommandStartSimulation(getSpace()));
+            executeCommand(new CommandStartSimulation(false));
         }
     }
 

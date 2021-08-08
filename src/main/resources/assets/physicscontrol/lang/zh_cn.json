@@ -1,0 +1,12 @@
+{
+  "physicscontrol.gui.sim.tooltip.tool_base": "%s工具",
+  "physicscontrol.gui.sim.name.sphere": "圆形",
+  "physicscontrol.gui.sim.name.box": "方形",
+  "physicscontrol.gui.sim.name.polygon": "多边形",
+  "physicscontrol.gui.sim.tooltip.radius": "半径: %.3f米",
+  "physicscontrol.gui.sim.tooltip.angle": "角度: %.3f度",
+  "physicscontrol.gui.sim.tooltip.width": "长度: %.3f米",
+  "physicscontrol.gui.sim.tooltip.height": "高度: %.3f米",
+  "physicscontrol.gui.sim.scale_measure": "%s米",
+  "physicscontrol.gui.sim.edit.title": "设置 %s "
+}

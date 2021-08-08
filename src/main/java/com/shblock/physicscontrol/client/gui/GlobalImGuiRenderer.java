@@ -29,7 +29,7 @@ public class GlobalImGuiRenderer {
     private static long windowPtr;
     private static ImGuiImplGlfw imGuiGlfw;
     private static ImGuiImplGl3 imGuiGl3;
-    private static ImGuiIO io;
+    public static ImGuiIO io;
     private static final String GLSL_VERSION = "#version 110";
     private static final Path FONTS_PATH = ModList.get()
             .getModFileById(PhysicsControl.MODID)
@@ -216,8 +216,59 @@ public class GlobalImGuiRenderer {
         }
     }
 
+    //onGuiInputEvent1 ~ onGuiInputEvent7 are to cancel the Gui event when ImGui want to capture mouse or keyboard
+
     @SubscribeEvent
-    public void onWorldRender(RenderGameOverlayEvent event) { //try to close the Gui
+    public void onGuiInputEvent1(final GuiScreenEvent.MouseClickedEvent.Pre event) {
+        if (isImGuiOpened() && io.getWantCaptureMouse()) {
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
+    public void onGuiInputEvent2(final GuiScreenEvent.MouseReleasedEvent.Pre event) {
+        if (isImGuiOpened() && io.getWantCaptureMouse()) {
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
+    public void onGuiInputEvent3(final GuiScreenEvent.MouseDragEvent.Pre event) {
+        if (isImGuiOpened() && io.getWantCaptureMouse()) {
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
+    public void onGuiInputEvent4(final GuiScreenEvent.MouseScrollEvent.Pre event) {
+        if (isImGuiOpened() && io.getWantCaptureMouse()) {
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
+    public void onGuiInputEvent5(final GuiScreenEvent.KeyboardKeyPressedEvent.Pre event) {
+        if (isImGuiOpened() && io.getWantCaptureKeyboard()) {
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
+    public void onGuiInputEvent6(final GuiScreenEvent.KeyboardKeyReleasedEvent.Pre event) {
+        if (isImGuiOpened() && io.getWantCaptureKeyboard()) {
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
+    public void onGuiInputEvent7(final GuiScreenEvent.KeyboardCharTypedEvent.Pre event) {
+        if (isImGuiOpened() && io.getWantCaptureKeyboard()) {
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
+    public void onWorldRender(RenderGameOverlayEvent event) { //try to close the Gui by render a empty frame
         if (this.needClose && !isImGuiOpened()) {
             startFrame();
             endFrame();

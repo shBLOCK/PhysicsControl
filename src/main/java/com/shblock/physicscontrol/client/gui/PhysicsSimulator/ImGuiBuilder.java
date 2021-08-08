@@ -7,6 +7,7 @@ import imgui.ImVec4;
 import imgui.flag.ImGuiCol;
 import imgui.flag.ImGuiWindowFlags;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.I18n;
 import net.minecraft.util.ResourceLocation;
 
 // Just because the Gui class is becoming too long
@@ -40,6 +41,12 @@ class ImGuiBuilder {
                 }
             }
             ImGui.popID();
+
+            if (ImGui.isItemHovered()) {
+                ImGui.beginTooltip();
+                ImGui.text(I18n.get("physicscontrol.gui.sim.tooltip.tool_base", I18n.get(tool.localizeName)));
+                ImGui.endTooltip();
+            }
 
             ImVec2 lastButtonPos = new ImVec2();
             ImGui.getItemRectMax(lastButtonPos);

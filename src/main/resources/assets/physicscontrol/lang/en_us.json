@@ -1,0 +1,12 @@
+{
+  "physicscontrol.gui.sim.tooltip.tool_base": "%s Tool",
+  "physicscontrol.gui.sim.name.sphere": "Sphere",
+  "physicscontrol.gui.sim.name.box": "Box",
+  "physicscontrol.gui.sim.name.polygon": "Polygon",
+  "physicscontrol.gui.sim.tooltip.radius": "Radius: %.3fm",
+  "physicscontrol.gui.sim.tooltip.angle": "Angle: %.3f°",
+  "physicscontrol.gui.sim.tooltip.width": "Width: %.3fm",
+  "physicscontrol.gui.sim.tooltip.height": "Height: %.3fm",
+  "physicscontrol.gui.sim.scale_measure": "%sm",
+  "physicscontrol.gui.sim.edit.title": "Edit %s"
+}

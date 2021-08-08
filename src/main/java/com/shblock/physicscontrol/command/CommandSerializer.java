@@ -31,7 +31,9 @@ public class CommandSerializer {
     }
 
     public static CompoundNBT toNBT(AbstractCommand command) {
-        return command.serializeNBT();
+        CompoundNBT nbt = command.serializeNBT();
+        nbt.putString("type", command.getName());
+        return nbt;
     }
 
     public static AbstractCommand fromNBT(CompoundNBT nbt) {
@@ -46,5 +48,7 @@ public class CommandSerializer {
         register(CommandAddRigidBody.class);
         register(CommandMoveCollisionObjects.class);
         register(CommandSingleStep.class);
+        register(CommandDeleteCollisionObjects.class);
+        register(CommandEditPcoProperty.class);
     }
 }

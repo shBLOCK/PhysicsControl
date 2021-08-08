@@ -5,12 +5,17 @@ import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
 import com.shblock.physicscontrol.physics.util.NBTSerializer;
 import net.minecraft.nbt.CompoundNBT;
 
+import javax.annotation.Nullable;
+
 public abstract class PhysicsCommandBase extends AbstractCommand {
     protected CompoundNBT old_space;
 
     public PhysicsCommandBase() {}
 
-    public PhysicsCommandBase(PhysicsSpace space) {
+    public PhysicsCommandBase(@Nullable PhysicsSpace space) {
+        if (space == null) {
+            space = InteractivePhysicsSimulator2D.getInstance().getSpace();
+        }
         this.old_space = NBTSerializer.toNBT(space);
     }
 
@@ -35,14 +40,13 @@ public abstract class PhysicsCommandBase extends AbstractCommand {
 
     @Override
     public CompoundNBT serializeNBT() {
-        CompoundNBT nbt = super.serializeNBT();
+        CompoundNBT nbt = new CompoundNBT();
         nbt.put("old_space", this.old_space);
         return nbt;
     }
 
     @Override
     public void deserializeNBT(CompoundNBT nbt) {
-        super.deserializeNBT(nbt);
         this.old_space = nbt.getCompound("old_space");
     }
 }

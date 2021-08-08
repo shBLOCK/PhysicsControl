@@ -32,22 +32,8 @@ public abstract class AbstractCommand implements INBTSerializable<CompoundNBT> {
     }
 
     @Override
-    public CompoundNBT serializeNBT() {
-        CompoundNBT nbt = new CompoundNBT();
-        nbt.putString("type", getName());
-//        ListNBT childes = new ListNBT();
-//        for (AbstractCommand child : childCommands) {
-//            childes.add(CommandSerializer.toNBT(child));
-//        }
-//        nbt.put("childes", childes);
-        return nbt;
-    }
+    public abstract CompoundNBT serializeNBT();
 
     @Override
-    public void deserializeNBT(CompoundNBT nbt) {
-//        ListNBT childes = nbt.getList("childes", Constants.NBT.TAG_COMPOUND);
-//        for (int i=0; i<childes.size(); i++) {
-//            childCommands.add(CommandSerializer.fromNBT(childes.getCompound(i)));
-//        }
-    }
+    public abstract void deserializeNBT(CompoundNBT nbt);
 }

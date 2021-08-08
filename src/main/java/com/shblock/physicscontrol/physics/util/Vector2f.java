@@ -178,6 +178,10 @@ public class Vector2f implements Cloneable, java.io.Serializable {
         return x * vec.x + y * vec.y;
     }
 
+    public float cross(Vector2f vec) {
+        return this.x * vec.y - this.y * vec.x;
+    }
+
     /**
      * Returns true if this vector is a unit vector (length() ~= 1),
      * returns false otherwise.
@@ -350,6 +354,21 @@ public class Vector2f implements Cloneable, java.io.Serializable {
     public Vector2f subtractLocal(float subtractX, float subtractY) {
         x -= subtractX;
         y -= subtractY;
+        return this;
+    }
+
+    /**
+     * <code>subtractLocal</code> subtracts the provided values from this vector
+     * internally, and returns a handle to this vector for easy chaining of
+     * calls.
+     *
+     * @param vec
+     *            the other vector to subtract.
+     * @return this
+     */
+    public Vector2f subtractLocal(Vector2f vec) {
+        x -= vec.x;
+        y -= vec.y;
         return this;
     }
 

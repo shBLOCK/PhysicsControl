@@ -1,5 +1,9 @@
 package com.shblock.physicscontrol;
 
+import com.jme3.bullet.collision.shapes.GImpactCollisionShape;
+import com.jme3.bullet.collision.shapes.infos.IndexedMesh;
+import com.jme3.bullet.objects.PhysicsRigidBody;
+import com.jme3.math.Vector3f;
 import com.shblock.physicscontrol.client.gui.GlobalImGuiRenderer;
 import com.shblock.physicscontrol.item.ItemPhysicsSimulator;
 import com.shblock.physicscontrol.proxy.ClientProxy;
@@ -18,6 +22,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.fml.event.lifecycle.FMLConstructModEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.IForgeRegistry;
@@ -34,6 +39,7 @@ public class PhysicsControl {
 
     public PhysicsControl() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
+        modEventBus.addListener(this::onModConstruct);
         modEventBus.addListener(this::onCommonSetup);
         modEventBus.addListener(this::onClientSetup);
         modEventBus.addListener(this::initImGuiRenderer);
@@ -45,6 +51,9 @@ public class PhysicsControl {
 
     private void onClientSetup(final FMLClientSetupEvent event) {
         ClientProxy.setup();
+    }
+
+    private void onModConstruct(final FMLConstructModEvent event) {
     }
 
     //Because this event posted closest to GL.createCapabilities(), and is the only stable one

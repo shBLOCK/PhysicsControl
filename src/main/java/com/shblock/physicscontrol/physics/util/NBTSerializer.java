@@ -24,6 +24,8 @@ import net.minecraft.nbt.ListNBT;
 import net.minecraftforge.common.util.Constants;
 
 import java.lang.reflect.Field;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -79,10 +81,18 @@ public class NBTSerializer {
 
     public static CompoundNBT toNBT(IndexedMesh mesh) {
         CompoundNBT nbt = new CompoundNBT();
-        nbt.putIntArray("indices", mesh.copyIndices().array());
+        IntBuffer buffer = mesh.copyIndices();
+        buffer.flip();
+        List<Integer> indexes = new ArrayList<>();
+        while (buffer.hasRemaining()) {
+            indexes.add(buffer.get());
+        }
+        nbt.putIntArray("indices", indexes);
+        FloatBuffer vertex_buffer = mesh.copyVertexPositions();
+        vertex_buffer.flip();
         ListNBT vertexes = new ListNBT();
-        for (float v : mesh.copyVertexPositions().array()) {
-            vertexes.add(FloatNBT.valueOf(v));
+        while (vertex_buffer.hasRemaining()) {
+            vertexes.add(FloatNBT.valueOf(vertex_buffer.get()));
         }
         nbt.put("vertexes", vertexes);
         return nbt;
@@ -238,7 +248,7 @@ public class NBTSerializer {
             body.setAnisotropicFriction(vec3FromNBT(nbt.getList("af_rolling", Constants.NBT.TAG_FLOAT)), AfMode.rolling);
         }
         if (nbt.contains("user_obj")) {
-            CollisionObjectUserObj2D obj = new CollisionObjectUserObj2D(0); //TODO: make it not only deserialize to CollisionObjectUserObj2D
+            CollisionObjectUserObj2D obj = new CollisionObjectUserObj2D(0 ,""); //TODO: make it not only deserialize to CollisionObjectUserObj2D
             obj.deserializeNBT(nbt.getCompound("user_obj"));
             body.setUserObject(obj);
         }
