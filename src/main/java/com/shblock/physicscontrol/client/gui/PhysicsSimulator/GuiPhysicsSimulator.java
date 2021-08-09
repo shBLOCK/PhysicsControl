@@ -522,8 +522,15 @@ public class GuiPhysicsSimulator extends ImGuiBase {
                         if (results.isEmpty()) {
                             return false;
                         }
+                        int pcoId = ((CollisionObjectUserObj2D) results.get(0).getUserObject()).getId();
                         getSimulator().select(results.get(0));
-                        this.pcoEditGuis.add(new PcoEditGui(getNextGuiId(), ((CollisionObjectUserObj2D) results.get(0).getUserObject()).getId()));
+                        for (PcoEditGui gui : this.pcoEditGuis) {
+                            if (gui.getPcoId() == pcoId) {
+                                gui.reopenMainWindow();
+                                return true;
+                            }
+                        }
+                        this.pcoEditGuis.add(new PcoEditGui(pcoId));
                         return true;
                 }
                 return false;
@@ -660,7 +667,7 @@ public class GuiPhysicsSimulator extends ImGuiBase {
                         )
                 );
                 body.setPhysicsLocation(start.toVec3());
-                body.setPhysicsRotation(new Quaternion().fromAngles(0F, 0F, (float) angle));
+                body.setPhysicsRotation(new Quaternion().fromAngles(0F, 0F, (float) -angle));
                 break;
             case BOX:
                 start = this.drawPoints.get(0).clone();

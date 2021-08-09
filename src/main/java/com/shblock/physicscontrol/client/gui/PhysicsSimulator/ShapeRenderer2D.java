@@ -37,7 +37,7 @@ public class ShapeRenderer2D {
         RenderSystem.enableDepthTest();
 
         Vector2f pos = new Vector2f(body.getPhysicsLocation(null));
-        com.jme3.math.Quaternion q = body.getPhysicsRotation(null);
+        com.jme3.math.Quaternion q = body.getPhysicsRotation(null).inverse();
         Quaternion rotation = new Quaternion(q.getX(), q.getY(), q.getZ(), q.getW());
         Vector2f scale = new Vector2f(body.getScale(null));
 

@@ -22,6 +22,11 @@ public abstract class AbstractCommand implements INBTSerializable<CompoundNBT> {
         return false;
     }
 
+    // Called after mergeWith(), to check if this command should be removed from the command history (for example: move command move to the start position)
+    public boolean shouldRemove() {
+        return false;
+    }
+
     public abstract String getName();
 
     /**

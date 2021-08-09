@@ -96,6 +96,9 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
     }
 
     public void addPco(PhysicsCollisionObject pco) {
+        if (pco instanceof PhysicsRigidBody) {
+            ((PhysicsRigidBody) pco).setEnableSleep(false);
+        }
         getSpace().addCollisionObject(pco);
     }
 
@@ -121,30 +124,12 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
         executeCommand(new CommandDeleteCollisionObjects(this.selectedObjects));
     }
 
-    /**
-     * Change the Z-Level of currently selected objects.
-     * @param change increase the level by 1 when this is 1, decrease the level by 1 when this is -1, assert otherwise.
-     */
+    public void changeZLevel(PhysicsCollisionObject pco, int change) {
+        executeCommand(new CommandChangeZLevel(change, Lists.newArrayList(pco)));
+    }
+
     public void changeSelectedZLevel(int change) {
-        assert change == 1 || change == -1 : change;
-        List<CollisionObjectUserObj2D> obj_list = this.selectedObjects.stream().map(pco -> (CollisionObjectUserObj2D) pco.getUserObject()).collect(Collectors.toList());
-        obj_list.sort((a, b) -> {
-            return Integer.compare(a.getZLevel(), b.getZLevel()) * (-change); // if change=-1, sort the z-level in inverted order
-        });
-        for (CollisionObjectUserObj2D obj : obj_list) {
-            if (change == 1 && obj.getZLevel() >= space.countCollisionObjects() - 1) {
-                return;
-            } else if (change == -1 && obj.getZLevel() <= 0) {
-                return;
-            }
-        }
-        for (CollisionObjectUserObj2D obj : obj_list) {
-            if (change == 1) {
-                obj.moveZLevelUp(getSpace());
-            } else {
-                obj.moveZLevelDown(getSpace());
-            }
-        }
+        executeCommand(new CommandChangeZLevel(change, this.selectedObjects));
     }
 
     public void reAddToUpdate(PhysicsCollisionObject pco) { // we can update the Collision Object's position by remove and re adding it to the space

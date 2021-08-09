@@ -31,6 +31,9 @@ public class CommandHistory {
                 history.remove(0);
                 pointer--;
             }
+        } else if(history.get(pointer).shouldRemove()) {
+            history.remove(pointer);
+            this.pointer--;
         }
     }
 

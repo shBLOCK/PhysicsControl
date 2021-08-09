@@ -1,6 +1,5 @@
 package com.shblock.physicscontrol.command;
 
-import com.jme3.bullet.PhysicsSpace;
 import com.jme3.bullet.collision.PhysicsCollisionObject;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
 import com.shblock.physicscontrol.physics.physics2d.CollisionObjectUserObj2D;
@@ -35,7 +34,7 @@ public class CommandDeleteCollisionObjects extends PhysicsCommandBase {
     }
 
     @Override
-    public CompoundNBT serializeNBT() { //TODO
+    public CompoundNBT serializeNBT() {
         CompoundNBT nbt = super.serializeNBT();
         nbt.putIntArray("objects", this.objects);
         return super.serializeNBT();

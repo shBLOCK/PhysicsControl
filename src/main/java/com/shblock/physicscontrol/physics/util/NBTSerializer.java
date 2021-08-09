@@ -170,8 +170,10 @@ public class NBTSerializer {
         nbt.put("gravity", toNBT(body.getGravity(null)));
         nbt.put("location", toNBT(body.getPhysicsLocation(null)));
         nbt.put("rotation", toNBT(body.getPhysicsRotationMatrix(null)));
-        nbt.put("linear_velocity", toNBT(body.getLinearVelocity(null)));
-        nbt.put("angular_velocity", toNBT(body.getAngularVelocity(null)));
+        if (body.isDynamic()) {
+            nbt.put("linear_velocity", toNBT(body.getLinearVelocity(null)));
+            nbt.put("angular_velocity", toNBT(body.getAngularVelocity(null)));
+        }
         nbt.putFloat("friction", body.getFriction());
         nbt.putFloat("rolling_friction", body.getRollingFriction());
         nbt.putFloat("spinning_friction", body.getSpinningFriction());
@@ -216,15 +218,19 @@ public class NBTSerializer {
         PhysicsRigidBody.logger2.setLevel(Level.ALL);
         body.setPhysicsLocation(vec3FromNBT(nbt.getList("location", Constants.NBT.TAG_FLOAT)));
         body.setPhysicsRotation(matrix3FromNBT(nbt.getList("rotation", Constants.NBT.TAG_FLOAT)));
-        body.setLinearVelocity(vec3FromNBT(nbt.getList("linear_velocity", Constants.NBT.TAG_FLOAT)));
-        body.setAngularVelocity(vec3FromNBT(nbt.getList("angular_velocity", Constants.NBT.TAG_FLOAT)));
+        if (nbt.getBoolean("kinematic")) {
+            body.setLinearVelocity(vec3FromNBT(nbt.getList("linear_velocity", Constants.NBT.TAG_FLOAT)));
+            body.setAngularVelocity(vec3FromNBT(nbt.getList("angular_velocity", Constants.NBT.TAG_FLOAT)));
+        }
         body.setFriction(nbt.getFloat("friction"));
         body.setRollingFriction(nbt.getFloat("rolling_friction"));
         body.setSpinningFriction(nbt.getFloat("spinning_friction"));
         body.setLinearDamping(nbt.getFloat("linear_damping"));
         body.setAngularDamping(nbt.getFloat("angular_damping"));
         //TODO: InverseInertia?
-        body.setKinematic(nbt.getBoolean("kinematic"));
+        if (!body.isStatic()) {
+            body.setKinematic(nbt.getBoolean("kinematic"));
+        }
         body.setEnableSleep(nbt.getBoolean("enable_sleep"));
         body.setLinearSleepingThreshold(nbt.getFloat("linear_sleeping_threshold"));
         body.setAngularSleepingThreshold(nbt.getFloat("angular_sleeping_threshold"));
@@ -248,7 +254,7 @@ public class NBTSerializer {
             body.setAnisotropicFriction(vec3FromNBT(nbt.getList("af_rolling", Constants.NBT.TAG_FLOAT)), AfMode.rolling);
         }
         if (nbt.contains("user_obj")) {
-            CollisionObjectUserObj2D obj = new CollisionObjectUserObj2D(0 ,""); //TODO: make it not only deserialize to CollisionObjectUserObj2D
+            CollisionObjectUserObj2D obj = new CollisionObjectUserObj2D(); //TODO: make it not only deserialize to CollisionObjectUserObj2D
             obj.deserializeNBT(nbt.getCompound("user_obj"));
             body.setUserObject(obj);
         }
