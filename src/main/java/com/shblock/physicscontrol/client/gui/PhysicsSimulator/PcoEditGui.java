@@ -13,6 +13,7 @@ import com.shblock.physicscontrol.physics.util.QuaternionUtil;
 import com.shblock.physicscontrol.physics.util.Vector2f;
 import imgui.ImColor;
 import imgui.ImGui;
+import imgui.extension.implot.ImPlot;
 import imgui.flag.*;
 import imgui.type.ImBoolean;
 import imgui.type.ImDouble;
@@ -21,6 +22,7 @@ import imgui.type.ImString;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.text.LanguageMap;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -277,10 +279,10 @@ public class PcoEditGui {
     }
 
     private static class ModuleMovement extends Module {
-        private float[] linearVelocity = new float[]{0F, 0F};
-        private float[] angularVelocity = new float[]{0F};
-        private float[] position = new float[]{0F, 0F};
-        private ImFloat rotation = new ImFloat(0F);
+        private final float[] linearVelocity = new float[]{0F, 0F};
+        private final float[] angularVelocity = new float[]{0F};
+        private final float[] position = new float[]{0F, 0F};
+        private final ImFloat rotation = new ImFloat(0F);
 
         public ModuleMovement() {}
 
@@ -289,29 +291,31 @@ public class PcoEditGui {
             String apply = I18n.get("physicscontrol.gui.sim.edit.module.movement.apply");
             String setCurrent = I18n.get("physicscontrol.gui.sim.edit.module.movement.set_current");
 
-            // Set linear velocity
-            ImGui.alignTextToFramePadding();
-            ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.movement.linear_velocity"));
-            ImGui.pushItemWidth(200F);
-            ImGui.dragFloat2("##linear_velocity", linearVelocity, 0.2F, -100F, 100F, "%" + I18n.get("physicscontrol.gui.sim.edit.module.movement.linear_velocity.num"), ImGuiSliderFlags.Logarithmic);
-            if (ImGui.button(apply + "##apply_linear_velocity")) {
-                gui.executeOperation(new EditOperations2D.SetLinearVelocity(new Vector2f(this.linearVelocity[0], this.linearVelocity[1])));
+            if (!pco.isStatic()) {
+                // Set linear velocity
+                ImGui.alignTextToFramePadding();
+                ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.movement.linear_velocity"));
+                ImGui.pushItemWidth(200F);
+                ImGui.dragFloat2("##linear_velocity", linearVelocity, 0.2F, -100F, 100F, "%" + I18n.get("physicscontrol.gui.sim.edit.module.movement.linear_velocity.num"), ImGuiSliderFlags.Logarithmic);
+                if (ImGui.button(apply + "##apply_linear_velocity")) {
+                    gui.executeOperation(new EditOperations2D.SetLinearVelocity(new Vector2f(this.linearVelocity[0], this.linearVelocity[1])));
+                }
+                ImGui.popItemWidth();
+
+                ImGui.separator();
+
+                // Set angular velocity
+                ImGui.alignTextToFramePadding();
+                ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.movement.angular_velocity"));
+                ImGui.pushItemWidth(100F);
+                ImGui.dragFloat("##angular_velocity", angularVelocity, 0.1F, (float) (-Math.PI * 4F), (float) (Math.PI * 4F), "%" + I18n.get("physicscontrol.gui.sim.edit.module.movement.angular_velocity.num"), ImGuiSliderFlags.Logarithmic);
+                if (ImGui.button(apply + "##apply_angular_velocity")) {
+                    gui.executeOperation(new EditOperations2D.SetAngularVelocity(angularVelocity[0]));
+                }
+                ImGui.popItemWidth();
+
+                ImGui.separator();
             }
-            ImGui.popItemWidth();
-
-            ImGui.separator();
-
-            // Set angular velocity
-            ImGui.alignTextToFramePadding();
-            ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.movement.angular_velocity"));
-            ImGui.pushItemWidth(100F);
-            ImGui.dragFloat("##angular_velocity", angularVelocity, 0.1F, (float) (-Math.PI * 4F), (float) (Math.PI * 4F), "%" + I18n.get("physicscontrol.gui.sim.edit.module.movement.angular_velocity.num"), ImGuiSliderFlags.Logarithmic);
-            if (ImGui.button(apply + "##apply_angular_velocity")) {
-                gui.executeOperation(new EditOperations2D.SetAngularVelocity(angularVelocity[0]));
-            }
-            ImGui.popItemWidth();
-
-            ImGui.separator();
 
             // Set pos
             ImGui.alignTextToFramePadding();
@@ -369,6 +373,14 @@ public class PcoEditGui {
             ImGui.text(b);
         }
 
+        public static String localize(String key, float num) {
+            return String.format(I18n.get(PREFIX + key).replace('&', '%'), num);
+        }
+
+        public static String localize(String key, Vector3f num) {
+            return String.format(I18n.get(PREFIX + key).replace('&', '%'), num.x, num.y);
+        }
+
         @Override
         public void build(PcoEditGui gui, PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
             int flags = ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.NoBordersInBody;
@@ -377,34 +389,34 @@ public class PcoEditGui {
                 Vector3f value;
 
                 // Surface area
-                column(I18n.get(PREFIX + "surface_area"), I18n.get(PREFIX + "surface_area.num", obj.getSurfaceArea()));
+                column(I18n.get(PREFIX + "surface_area"), localize("surface_area.num", (float) obj.getSurfaceArea()));
                 if (!pco.isStatic()) {
                     // Density
-                    column(I18n.get(PREFIX + "density"), I18n.get(PREFIX + "density.num", obj.getDensity()));
+                    column(I18n.get(PREFIX + "density"), localize("density.num", (float) obj.getDensity()));
                     // Mass
-                    column(I18n.get(PREFIX + "mass"), I18n.get(PREFIX + "mass.num", ((PhysicsRigidBody) pco).getMass()));
+                    column(I18n.get(PREFIX + "mass"), localize("mass.num", ((PhysicsRigidBody) pco).getMass()));
                 }
                 // Position
                 value = pco.getPhysicsLocation(null);
-                column(I18n.get(PREFIX + "position"), I18n.get(PREFIX + "position.num", value.x, value.y));
+                column(I18n.get(PREFIX + "position"), localize("position.num", value));
                 if (!pco.isStatic()) {
                     // Linear velocity
                     value = ((PhysicsRigidBody) pco).getLinearVelocity(null);
-                    column(I18n.get(PREFIX + "linear_velocity"), I18n.get(PREFIX + "linear_velocity.num", value.x, value.y));
+                    column(I18n.get(PREFIX + "linear_velocity"), localize("linear_velocity.num", value));
                 }
                 // Rotation
-                column(I18n.get(PREFIX + "rotation"), I18n.get(PREFIX + "rotation.num", QuaternionUtil.getZRadians(pco.getPhysicsRotation(null))));
+                column(I18n.get(PREFIX + "rotation"), localize("rotation.num", (float) QuaternionUtil.getZRadians(pco.getPhysicsRotation(null))));
                 if (!pco.isStatic()) {
                     // Angular velocity
-                    column(I18n.get(PREFIX + "angular_velocity"), I18n.get(PREFIX + "angular_velocity.num", ((PhysicsRigidBody) pco).getAngularVelocityLocal(null).z));
+                    column(I18n.get(PREFIX + "angular_velocity"), localize("angular_velocity.num", ((PhysicsRigidBody) pco).getAngularVelocityLocal(null).z));
                 }
                 //TODO: momentum? (linear and angular)
 
                 if (!pco.isStatic()) {
                     // Kinetic energy
-                    column(I18n.get(PREFIX + "kinetic_energy"), I18n.get(PREFIX + "kinetic_energy.num", ((PhysicsRigidBody) pco).kineticEnergy()));
+                    column(I18n.get(PREFIX + "kinetic_energy"), localize("kinetic_energy.num", (float) ((PhysicsRigidBody) pco).kineticEnergy()));
                     // Mechanical Energy
-                    column(I18n.get(PREFIX + "mechanical_energy"), I18n.get(PREFIX + "mechanical_energy.num", ((PhysicsRigidBody) pco).mechanicalEnergy()));
+                    column(I18n.get(PREFIX + "mechanical_energy"), localize("mechanical_energy.num", (float) ((PhysicsRigidBody) pco).mechanicalEnergy()));
                 }
 
                 ImGui.endTable();
@@ -470,7 +482,10 @@ public class PcoEditGui {
 
         @Override
         public void build(PcoEditGui gui, PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
-
+            if (ImPlot.beginPlot("test")) {
+                ImPlot.plotLine("a", new Double[]{1D, 2D, 0.5D}, new Double[]{2D, 0.5D, 1D});
+                ImPlot.endPlot();
+            }
         }
 
 

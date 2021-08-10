@@ -4,6 +4,7 @@ import com.shblock.physicscontrol.PhysicsControl;
 import imgui.*;
 import imgui.callback.ImStrConsumer;
 import imgui.callback.ImStrSupplier;
+import imgui.extension.implot.ImPlot;
 import imgui.flag.*;
 import imgui.gl3.ImGuiImplGl3;
 import imgui.glfw.ImGuiImplGlfw;
@@ -161,6 +162,8 @@ public class GlobalImGuiRenderer {
 
         imGuiGlfw.init(windowPtr, false);
         imGuiGl3.init(GLSL_VERSION);
+
+        ImPlot.createContext();
     }
 
     private ImGuiBase getCurrentImGuiScreen() {

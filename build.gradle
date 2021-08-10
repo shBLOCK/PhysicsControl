@@ -11,6 +11,7 @@ apply plugin: 'net.minecraftforge.gradle'
 // Only edit below this line, the above code adds and enables the necessary things for Forge to be setup.
 apply plugin: 'eclipse'
 apply plugin: 'maven-publish'
+apply plugin: "java-library"
 
 version = '1.0'
 group = 'com.shblock.physicscontrol' // http://maven.apache.org/guides/mini/guide-naming-conventions.html
@@ -119,10 +120,15 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 //}
 
 repositories {
+//    flatDir {
+//        dirs 'libs'
+//    }
     mavenLocal()
-    flatDir {
-        dirs "libs"
-    }
+    mavenCentral()
+    google()
+    gradlePluginPortal()
+    maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
+    maven { url "https://oss.sonatype.org/content/repositories/releases/" }
 //    maven {
 //        url 'https://jitpack.io'
 //    }
@@ -131,6 +137,8 @@ repositories {
 
 ext {
     imguiVersion = "1.83.3"
+    gdxVersion = '1.10.0'
+    box2DLightsVersion = '1.5'
 }
 
 dependencies {
@@ -157,22 +165,21 @@ dependencies {
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
 
-    //Box2D
-    implementation name: "jbox2d-library"
+//    //Box2D
+//    implementation name: 'jbox2d-library'
+
+    implementation fileTree(dir: 'libs', includes: ['jbox2d-library.jar'])
 
     //Bullet
     implementation 'com.github.stephengold:Libbulletjme:10.5.0'
 
     //ImGUI
     implementation "io.github.spair:imgui-java-app:$imguiVersion"
-//    implementation "io.github.spair:imgui-java-binding:$imguiVersion"
-//    implementation "io.github.spair:imgui-java-lwjgl3:$imguiVersion"
-//    implementation "io.github.spair:imgui-java-natives-windows:$imguiVersion"
-//    implementation "io.github.spair:imgui-java-natives-linux:$imguiVersion"
-//    implementation "io.github.spair:imgui-java-natives-macos:$imguiVersion"
-////    implementation "io.github.spair:imgui-java-natives-windows-ft:$imguiVersion"
-////    implementation "io.github.spair:imgui-java-natives-linux-ft:$imguiVersion"
-////    implementation "io.github.spair:imgui-java-natives-macos-ft:$imguiVersion"
+
+    //LibGDX ?
+    api "com.badlogicgames.gdx:gdx-box2d:$gdxVersion"
+    api "com.badlogicgames.gdx:gdx-bullet:$gdxVersion"
+    api "com.badlogicgames.box2dlights:box2dlights:$box2DLightsVersion"
 }
 
 // Example for how to get properties into the manifest for reading by the runtime..
