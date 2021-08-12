@@ -67,7 +67,7 @@
   "physicscontrol.gui.sim.edit.module.collision.layer": "Collision Layer %d",
   "physicscontrol.gui.sim.edit.module.collision.select_all": "Select All",
   "physicscontrol.gui.sim.edit.module.collision.unselect_all": "Unselect All",
-  "physicscontrol.gui.sim.tool.drag": "Drag Tool",
+  "physicscontrol.gui.sim.tool.drag": "Drag",
   "physicscontrol.gui.sim.tool.config.drag.max_force": "Max Force:",
   "physicscontrol.gui.sim.tool.config.drag.max_force.num": "&.1f N",
   "physicscontrol.gui.sim.tool.config.drag.damping": "Damping Ratio:",
