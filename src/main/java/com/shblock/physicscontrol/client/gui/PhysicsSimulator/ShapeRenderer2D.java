@@ -37,8 +37,11 @@ public class ShapeRenderer2D {
         Quaternion rotation = QuaternionUtil.setZRadians(-body.getAngle());
 //        Vec2 scale = new Vec2(body.getScale(null));
 
-        Shape shape = body.getFixtureList().m_shape;
         BodyUserObj userObj = (BodyUserObj) body.getUserData();
+        if (userObj == null) {
+            return;
+        }
+        Shape shape = body.getFixtureList().m_shape;
 
         matrixStack.translate(pos.x, -pos.y, userObj.getZLevel() * Z_LEVEL_STEP - 1000F);
 //        matrixStack.scale(scale.x, scale.y, 1F);

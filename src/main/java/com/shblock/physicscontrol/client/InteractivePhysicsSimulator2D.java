@@ -92,10 +92,8 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
     }
 
     public void forEachBody(Consumer<Body> consumer) {
-        Body body = getSpace().getBodyList();
-        while (body != null) {
+        for (Body body : this.idBodyMap.values()) {
             consumer.accept(body);
-            body = body.m_next;
         }
     }
 

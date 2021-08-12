@@ -12,6 +12,8 @@ public class ToolEditGui {
 
     private final Tools tool;
 
+    private boolean isFirstRender = true;
+
     public ToolEditGui(Tools tool) {
         this.tool = tool;
     }
@@ -19,7 +21,11 @@ public class ToolEditGui {
     public boolean buildImGui(ToolConfig config) {
         switch (this.tool) {
             case DRAG:
-                if (ImGui.beginMenu("##tool_edit_gui")) {
+                if (this.isFirstRender) {
+                    ImGui.openPopup("##tool_edit_gui");
+                    this.isFirstRender = false;
+                }
+                if (ImGui.beginPopup("##tool_edit_gui")) {
                     //Max Force
                     ImGui.text(I18n.get(PREFIX + "drag.max_force"));
                     ImGui.sameLine();
@@ -50,11 +56,12 @@ public class ToolEditGui {
                     ImGui.text(I18n.get(PREFIX + "drag.frequency"));
                     ImGui.sameLine();
                     ImFloat frequency = new ImFloat(config.dragToolFrequency);
-                    if (ImGui.sliderScalar("##frequency", ImGuiDataType.Float, frequency, 0.5F, 60F, I18nHelper.localizeNumFormat(PREFIX + "drag.damping.num"), ImGuiSliderFlags.None)) {
+                    if (ImGui.sliderScalar("##frequency", ImGuiDataType.Float, frequency, 0.5F, 60F, I18nHelper.localizeNumFormat(PREFIX + "drag.frequency.num"), ImGuiSliderFlags.None)) {
                         config.dragToolFrequency = frequency.get();
                     }
 
-                    ImGui.endMenu();
+                    ImGui.endPopup();
+                    return true;
                 } else {
                     return false;
                 }

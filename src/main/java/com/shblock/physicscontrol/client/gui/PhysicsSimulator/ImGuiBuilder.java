@@ -34,6 +34,11 @@ class ImGuiBuilder {
         for (Tools tool : Tools.values()) {
             int i = tool.ordinal();
 
+            if (tool.group != last_group) {
+                ImGui.separator();
+            }
+            last_group = tool.group;
+
             ImGui.pushID(i);
             if (getGui().getCurrentTool() == tool) {
                 ImVec4 color = ImGui.getStyle().getColor(ImGuiCol.ButtonActive);
@@ -63,8 +68,6 @@ class ImGuiBuilder {
                 if (i + 1 < Tools.values().length && nextButtonX2 < windowX2) {
                     ImGui.sameLine();
                 }
-            } else {
-                ImGui.separator();
             }
         }
 

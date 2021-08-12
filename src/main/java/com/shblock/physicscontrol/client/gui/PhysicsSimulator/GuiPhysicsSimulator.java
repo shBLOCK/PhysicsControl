@@ -106,7 +106,10 @@ public class GuiPhysicsSimulator extends ImGuiBase {
     public void buildImGui() {
         ImGui.showDemoWindow();
 
-        this.toolEditGui = ImGuiBuilder.buildToolSelectorUI();
+        ToolEditGui newGui = ImGuiBuilder.buildToolSelectorUI();
+        if (this.toolEditGui == null && newGui != null) {
+            this.toolEditGui = newGui;
+        }
 
         if (this.state == State.DRAW) {
             buildImGuiDrawing();
@@ -245,7 +248,10 @@ public class GuiPhysicsSimulator extends ImGuiBase {
         matrixStack.pushPose();
         Vec2 start = new Vec2();
         this.draggingJoint.getAnchorB(start);
-        RenderHelper.drawLine(matrixStack.last().pose(), start, this.draggingJoint.getTarget(), 2F, 1F, 1F, 1F, 1F);
+        start.y = -start.y;
+        Vec2 end = this.draggingJoint.getTarget().clone();
+        end.y = -end.y;
+        RenderHelper.drawLine(matrixStack.last().pose(), start, end, 2F, 1F, 1F, 1F, 1F);
         matrixStack.popPose();
     }
 
@@ -401,7 +407,8 @@ public class GuiPhysicsSimulator extends ImGuiBase {
                     }
                     return;
                 case DRAG:
-                    this.draggingJoint.setTarget(toSpacePos(mouseX, mouseY));
+                    Vec2 pos = toSpacePos(mouseX, mouseY);
+                    this.draggingJoint.setTarget(pos);
             }
         }
     }
@@ -413,7 +420,9 @@ public class GuiPhysicsSimulator extends ImGuiBase {
                 switch (this.state) {
                     case NONE:
                         if (getSimulator().isPointOnAnySelected(toSpacePos(mouseX, mouseY))) {
-                            return false;
+                            if (this.currentTool != Tools.DRAG) {
+                                return false;
+                            }
                         }
                         switch (this.currentTool) {
                             case DRAW_CIRCLE:
@@ -440,7 +449,7 @@ public class GuiPhysicsSimulator extends ImGuiBase {
                             case DRAG:
                                 Vec2 pos = toSpacePos(mouseX, mouseY);
                                 List<Body> results = getSimulator().pointTestSorted(pos);
-                                if (!results.isEmpty()) {
+                                if (!results.isEmpty() && results.get(0).getType() == BodyType.DYNAMIC) {
                                     this.state = State.DRAG;
 
                                     if (this.toolConfig.dragToolDragCenter) {
@@ -448,17 +457,27 @@ public class GuiPhysicsSimulator extends ImGuiBase {
                                     }
 
                                     MouseJointDef jointDef = new MouseJointDef();
+                                    Body tempBody = getSimulator().getSpace().createBody(new BodyDef());
+                                    jointDef.bodyA = tempBody;
                                     jointDef.bodyB = results.get(0);
                                     jointDef.target.set(pos);
                                     jointDef.maxForce = this.toolConfig.dragToolMaxForce;
                                     jointDef.dampingRatio = this.toolConfig.dragToolDampingRatio;
                                     jointDef.frequencyHz = this.toolConfig.dragToolFrequency;
+                                    jointDef.collideConnected = true;
 
                                     if (this.toolConfig.dragToolDisableRotation) {
                                         results.get(0).setFixedRotation(true);
                                     }
 
+                                    results.get(0).setAwake(true);
+                                    results.get(0).setActive(true);
+
                                     this.draggingJoint = (MouseJoint) getSimulator().getSpace().createJoint(jointDef);
+
+//                                    System.out.println(getSimulator().getSpace().getJointCount());
+//                                    getSimulator().getSpace().destroyBody(tempBody);
+//                                    System.out.println(getSimulator().getSpace().getJointCount());
 
                                     return true;
                                 }
@@ -547,6 +566,7 @@ public class GuiPhysicsSimulator extends ImGuiBase {
                         return true;
                     case DRAG:
                         this.draggingJoint.getBodyB().setFixedRotation(false);
+                        getSimulator().getSpace().destroyBody(this.draggingJoint.getBodyA());
                         this.draggingJoint = null;
                         this.state = State.NONE;
                         return true;

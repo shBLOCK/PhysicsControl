@@ -180,8 +180,8 @@ public class RenderHelper {
         Tessellator tessellator = Tessellator.getInstance();
         BufferBuilder builder = tessellator.getBuilder();
         builder.begin(GL11.GL_LINES, DefaultVertexFormats.POSITION_COLOR);
-        builder.vertex(matrix, start.x, end.y, 0F).color(r, g, b, a).endVertex();
-        builder.vertex(matrix, start.x, end.y, 0F).color(r, g, b, a).endVertex();
+        builder.vertex(matrix, start.x, start.y, 0F).color(r, g, b, a).endVertex();
+        builder.vertex(matrix, end.x, end.y, 0F).color(r, g, b, a).endVertex();
         tessellator.end();
 
         RenderSystem.enableTexture();
