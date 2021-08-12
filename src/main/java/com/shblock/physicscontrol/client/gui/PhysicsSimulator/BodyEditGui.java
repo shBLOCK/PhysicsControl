@@ -1,16 +1,14 @@
 package com.shblock.physicscontrol.client.gui.PhysicsSimulator;
 
-import com.jme3.bullet.collision.PhysicsCollisionObject;
-import com.jme3.bullet.objects.PhysicsRigidBody;
-import com.jme3.math.Vector3f;
 import com.shblock.physicscontrol.PhysicsControl;
+import com.shblock.physicscontrol.client.I18nHelper;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
 import com.shblock.physicscontrol.client.gui.GlobalImGuiRenderer;
-import com.shblock.physicscontrol.command.CommandEditPcoProperty;
+import com.shblock.physicscontrol.command.CommandEditBodyProperty;
 import com.shblock.physicscontrol.command.EditOperations2D;
-import com.shblock.physicscontrol.physics.physics2d.CollisionObjectUserObj2D;
+import com.shblock.physicscontrol.physics.physics.BodyUserObj;
 import com.shblock.physicscontrol.physics.util.QuaternionUtil;
-import com.shblock.physicscontrol.physics.util.Vector2f;
+import com.shblock.physicscontrol.physics.util.ShapeHelper;
 import imgui.ImColor;
 import imgui.ImGui;
 import imgui.extension.implot.ImPlot;
@@ -22,20 +20,22 @@ import imgui.type.ImString;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.text.LanguageMap;
+import org.jbox2d.common.Vec2;
+import org.jbox2d.dynamics.Body;
+import org.jbox2d.dynamics.BodyType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class PcoEditGui {
+public class BodyEditGui {
     private static final int ICON = Minecraft.getInstance().getTextureManager().getTexture(new ResourceLocation(PhysicsControl.MODID, "icons")).getId();
     private static final int GLOBAL_INPUT_FLAG = ImGuiInputTextFlags.NoUndoRedo | ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.CallbackResize;
 
     private boolean moveToMouse = true;
     private boolean displayMainWindow = true;
-    private int pcoId; //TODO: improve performance? (don't search for the id every time)
+    private int bodyId; //TODO: improve performance? (don't search for the id every time)
 
     private List<Module> mainWindowModules = new ArrayList<>();
     private Map<Integer, Module> modules = new HashMap<>();
@@ -46,20 +46,20 @@ public class PcoEditGui {
     }
 
     private void executeOperation(EditOperations2D.EditOperationBase operation) {
-        getSimulator().executeCommand(new CommandEditPcoProperty(this.pcoId, operation));
+        getSimulator().executeCommand(new CommandEditBodyProperty(this.bodyId, operation));
     }
 
-    public PcoEditGui(int pcoId) {
-        this.pcoId = pcoId;
+    public BodyEditGui(int bodyId) {
+        this.bodyId = bodyId;
         createMainWindowModules();
     }
 
     public boolean buildImGui() {
-        PhysicsCollisionObject pco = InteractivePhysicsSimulator2D.getInstance().getPcoFromId(this.pcoId);
-        if (pco == null) {
+        Body body = InteractivePhysicsSimulator2D.getInstance().getBodyFromId(this.bodyId);
+        if (body == null) {
             return false;
         }
-        CollisionObjectUserObj2D obj = (CollisionObjectUserObj2D) pco.getUserObject();
+        BodyUserObj obj = (BodyUserObj) body.getUserData();
 
         if (this.displayMainWindow) {
             ImBoolean pOpen = new ImBoolean(true);
@@ -67,7 +67,7 @@ public class PcoEditGui {
                 ImGui.setNextWindowPos(ImGui.getMousePosX(), ImGui.getMousePosY());
                 this.moveToMouse = false;
             }
-            boolean shouldBuild = ImGui.begin(I18n.get("physicscontrol.gui.sim.edit.title", obj.getName()) + "###" + "edit_gui_" + pcoId, pOpen, ImGuiWindowFlags.None);
+            boolean shouldBuild = ImGui.begin(I18n.get("physicscontrol.gui.sim.edit.title", obj.getName()) + "###" + "edit_gui_" + bodyId, pOpen, ImGuiWindowFlags.None);
             if (pOpen.get()) {
                 if (shouldBuild) {
                     for (Module module : this.mainWindowModules) {
@@ -81,7 +81,7 @@ public class PcoEditGui {
                             }
                         }
                         if (shouldBuildModule) {
-                            module.build(this, pco, obj);
+                            module.build(this, body, obj);
                             ImGui.separator();
                         }
                     }
@@ -109,7 +109,7 @@ public class PcoEditGui {
             }
 
             if (shouldRender) {
-                module.build(this, pco, obj);
+                module.build(this, body, obj);
             }
 
             ImGui.end();
@@ -145,7 +145,7 @@ public class PcoEditGui {
     private static abstract class Module {
 
 
-        public abstract void build(PcoEditGui gui, PhysicsCollisionObject pco, CollisionObjectUserObj2D obj);
+        public abstract void build(BodyEditGui gui, Body body, BodyUserObj obj);
 
         public abstract String getId();
     }
@@ -154,12 +154,12 @@ public class PcoEditGui {
         public ModuleTools() {}
 
         @Override
-        public void build(PcoEditGui gui, PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
+        public void build(BodyEditGui gui, Body body, BodyUserObj obj) {
             // Delete
             ImGui.image(ICON, 16F, 16F, 0F, 0.9375F, 0.0625F, 1F);
             ImGui.sameLine();
             if (ImGui.menuItem(I18n.get("physicscontrol.gui.sim.edit.module.tools.delete"))) {
-                getSimulator().deletePco(pco);
+                getSimulator().deleteBodyLocal(body);
             }
         }
 
@@ -173,7 +173,7 @@ public class PcoEditGui {
         public ModuleAppearance() {}
 
         @Override
-        public void build(PcoEditGui gui, PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
+        public void build(BodyEditGui gui, Body body, BodyUserObj obj) {
             // Name
             ImGui.pushID("name");
             ImGui.alignTextToFramePadding();
@@ -200,11 +200,11 @@ public class PcoEditGui {
             // Z-Level
             ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.appearance.z_level"));
             if (ImGui.arrowButton("##z_up", ImGuiDir.Up)) {
-                getSimulator().changeZLevel(pco, 1);
+                getSimulator().changeZLevel(body, 1);
             }
             ImGui.text(Integer.toString(obj.getZLevel()));
             if (ImGui.arrowButton("##z_down", ImGuiDir.Down)) {
-                getSimulator().changeZLevel(pco, -1);
+                getSimulator().changeZLevel(body, -1);
             }
         }
 
@@ -218,32 +218,35 @@ public class PcoEditGui {
         public ModuleMaterial() {}
 
         @Override
-        public void build(PcoEditGui gui, PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
+        public void build(BodyEditGui gui, Body body, BodyUserObj obj) {
+            boolean isStatic = body.getType() == BodyType.STATIC;
+
             // Static
             ImGui.pushID("static");
-            if (ImGui.checkbox(I18n.get("physicscontrol.gui.sim.edit.module.material.static"), pco.isStatic())) {
-                gui.executeOperation(new EditOperations2D.SetStatic(!pco.isStatic()));
+            if (ImGui.checkbox(I18n.get("physicscontrol.gui.sim.edit.module.material.static"), isStatic)) {
+                gui.executeOperation(new EditOperations2D.SetStatic(!isStatic));
+                isStatic = !isStatic;
             }
             ImGui.popID();
 
             // Material
             ImGui.text("TODO: material selection!");
 
-            if (!pco.isStatic()) {
+            if (!isStatic) {
                 // Density
                 ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.material.density"));
-                ImDouble density = new ImDouble(obj.getDensity());
-                if (ImGui.sliderScalar("##density", ImGuiDataType.Double, density, 0.001D, 100D, "%" + I18n.get("physicscontrol.gui.sim.edit.module.material.density.num"), ImGuiSliderFlags.Logarithmic)) {
-                    if (density.get() <= 0D) {
-                        density.set(0.001D);
+                ImFloat density = new ImFloat(body.getFixtureList().getDensity());
+                if (ImGui.sliderScalar("##density", ImGuiDataType.Float, density, 0.001F, 100F, I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.material.density.num"), ImGuiSliderFlags.Logarithmic)) {
+                    if (density.get() <= 0F) {
+                        density.set(0.001F);
                     }
                     gui.executeOperation(new EditOperations2D.SetDensity(density.get()));
                 }
 
                 // Mass
                 ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.material.mass"));
-                ImFloat mass = new ImFloat(((PhysicsRigidBody) pco).getMass());
-                if (ImGui.sliderScalar("##mass", ImGuiDataType.Float, mass, 0.001F, 1000F, "%" + I18n.get("physicscontrol.gui.sim.edit.module.material.mass.num"), ImGuiSliderFlags.Logarithmic)) {
+                ImFloat mass = new ImFloat(body.getMass());
+                if (ImGui.sliderScalar("##mass", ImGuiDataType.Float, mass, 0.001F, 1000F, I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.material.mass.num"), ImGuiSliderFlags.Logarithmic)) {
                     if (mass.get() <= 0F) {
                         mass.set(0.001F);
                     }
@@ -253,8 +256,8 @@ public class PcoEditGui {
 
             // Friction
             ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.material.friction"));
-            ImFloat friction = new ImFloat(pco.getFriction());
-            if (ImGui.sliderScalar("##friction", ImGuiDataType.Float, friction, 0F, 3F, "%" + I18n.get("physicscontrol.gui.sim.edit.module.material.friction.num"), ImGuiSliderFlags.None)) {
+            ImFloat friction = new ImFloat(body.getFixtureList().getFriction());
+            if (ImGui.sliderScalar("##friction", ImGuiDataType.Float, friction, 0F, 3F, I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.material.friction.num"), ImGuiSliderFlags.None)) {
                 if (friction.get() < 0F) {
                     friction.set(0F);
                 }
@@ -263,8 +266,8 @@ public class PcoEditGui {
 
             // Restitution
             ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.material.restitution"));
-            ImFloat restitution = new ImFloat(pco.getRestitution());
-            if (ImGui.sliderScalar("##restitution", ImGuiDataType.Float, restitution, 0F, 1F, "%" + I18n.get("physicscontrol.gui.sim.edit.module.material.restitution.num"), ImGuiSliderFlags.None)) {
+            ImFloat restitution = new ImFloat(body.getFixtureList().getRestitution());
+            if (ImGui.sliderScalar("##restitution", ImGuiDataType.Float, restitution, 0F, 1F, I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.material.restitution.num"), ImGuiSliderFlags.None)) {
                 if (restitution.get() < 0F) {
                     restitution.set(0F);
                 }
@@ -287,18 +290,20 @@ public class PcoEditGui {
         public ModuleMovement() {}
 
         @Override
-        public void build(PcoEditGui gui, PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
+        public void build(BodyEditGui gui, Body body, BodyUserObj obj) {
+            boolean isStatic = body.getType() == BodyType.STATIC;
+
             String apply = I18n.get("physicscontrol.gui.sim.edit.module.movement.apply");
             String setCurrent = I18n.get("physicscontrol.gui.sim.edit.module.movement.set_current");
 
-            if (!pco.isStatic()) {
+            if (!isStatic) {
                 // Set linear velocity
                 ImGui.alignTextToFramePadding();
                 ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.movement.linear_velocity"));
                 ImGui.pushItemWidth(200F);
-                ImGui.dragFloat2("##linear_velocity", linearVelocity, 0.2F, -100F, 100F, "%" + I18n.get("physicscontrol.gui.sim.edit.module.movement.linear_velocity.num"), ImGuiSliderFlags.Logarithmic);
+                ImGui.dragFloat2("##linear_velocity", linearVelocity, 0.2F, -100F, 100F, I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.movement.linear_velocity.num"), ImGuiSliderFlags.Logarithmic);
                 if (ImGui.button(apply + "##apply_linear_velocity")) {
-                    gui.executeOperation(new EditOperations2D.SetLinearVelocity(new Vector2f(this.linearVelocity[0], this.linearVelocity[1])));
+                    gui.executeOperation(new EditOperations2D.SetLinearVelocity(new Vec2(this.linearVelocity[0], this.linearVelocity[1])));
                 }
                 ImGui.popItemWidth();
 
@@ -308,7 +313,7 @@ public class PcoEditGui {
                 ImGui.alignTextToFramePadding();
                 ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.movement.angular_velocity"));
                 ImGui.pushItemWidth(100F);
-                ImGui.dragFloat("##angular_velocity", angularVelocity, 0.1F, (float) (-Math.PI * 4F), (float) (Math.PI * 4F), "%" + I18n.get("physicscontrol.gui.sim.edit.module.movement.angular_velocity.num"), ImGuiSliderFlags.Logarithmic);
+                ImGui.dragFloat("##angular_velocity", angularVelocity, 0.1F, (float) (-Math.PI * 4F), (float) (Math.PI * 4F), I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.movement.angular_velocity.num"), ImGuiSliderFlags.Logarithmic);
                 if (ImGui.button(apply + "##apply_angular_velocity")) {
                     gui.executeOperation(new EditOperations2D.SetAngularVelocity(angularVelocity[0]));
                 }
@@ -321,17 +326,17 @@ public class PcoEditGui {
             ImGui.alignTextToFramePadding();
             ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.movement.position"));
             ImGui.pushItemWidth(200F);
-            ImGui.inputFloat2("##position", this.position, "%" + I18n.get("physicscontrol.gui.sim.edit.module.movement.position.num"), ImGuiInputTextFlags.EnterReturnsTrue);
+            ImGui.inputFloat2("##position", this.position, I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.movement.position.num"), ImGuiInputTextFlags.EnterReturnsTrue);
             ImGui.popItemWidth();
             ImGui.sameLine();
             if (ImGui.button(setCurrent+ "##set_current_position")) {
-                Vector3f pos = pco.getPhysicsLocation(null);
+                Vec2 pos = body.getPosition();
                 this.position[0] = pos.x;
                 this.position[1] = pos.y;
             }
             ImGui.pushItemWidth(200F);
             if (ImGui.button(apply + "##apply_position")) {
-                gui.executeOperation(new EditOperations2D.SetPos(new Vector2f(this.position[0], this.position[1])));
+                gui.executeOperation(new EditOperations2D.SetPos(new Vec2(this.position[0], this.position[1])));
             }
             ImGui.popItemWidth();
 
@@ -341,11 +346,11 @@ public class PcoEditGui {
             ImGui.alignTextToFramePadding();
             ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.movement.rotation"));
             ImGui.pushItemWidth(100F);
-            ImGui.inputFloat("##rotation", this.rotation, 0.03F, 0.1F, "%" + I18n.get("physicscontrol.gui.sim.edit.module.movement.rotation.num"), ImGuiInputTextFlags.EnterReturnsTrue);
+            ImGui.inputFloat("##rotation", this.rotation, 0.03F, 0.1F, I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.movement.rotation.num"), ImGuiInputTextFlags.EnterReturnsTrue);
             ImGui.popItemWidth();
             ImGui.sameLine();
             if (ImGui.button( setCurrent+ "##set_current_rotation")) {
-                this.rotation.set((float) QuaternionUtil.getZRadians(pco.getPhysicsRotation(null)));
+                this.rotation.set(body.getAngle());
             }
             ImGui.pushItemWidth(100F);
             if (ImGui.button(apply + "##apply_rotation")) {
@@ -374,50 +379,52 @@ public class PcoEditGui {
         }
 
         public static String localize(String key, float num) {
-            return String.format(I18n.get(PREFIX + key).replace('&', '%'), num);
+            return String.format(I18nHelper.localizeNumFormat(PREFIX + key), num);
         }
 
-        public static String localize(String key, Vector3f num) {
-            return String.format(I18n.get(PREFIX + key).replace('&', '%'), num.x, num.y);
+        public static String localize(String key, Vec2 num) {
+            return String.format(I18nHelper.localizeNumFormat(PREFIX + key), num.x, num.y);
         }
 
         @Override
-        public void build(PcoEditGui gui, PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
+        public void build(BodyEditGui gui, Body body, BodyUserObj obj) {
+            boolean isStatic = body.getType() == BodyType.STATIC;
+
             int flags = ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.NoBordersInBody;
 
             if (ImGui.beginTable("table", 2, flags)) {
-                Vector3f value;
+                Vec2 value;
 
                 // Surface area
-                column(I18n.get(PREFIX + "surface_area"), localize("surface_area.num", (float) obj.getSurfaceArea()));
-                if (!pco.isStatic()) {
+                column(I18n.get(PREFIX + "surface_area"), localize("surface_area.num", (float) ShapeHelper.getSurfaceArea2D(body.getFixtureList().getShape())));
+                if (!isStatic) {
                     // Density
-                    column(I18n.get(PREFIX + "density"), localize("density.num", (float) obj.getDensity()));
+                    column(I18n.get(PREFIX + "density"), localize("density.num", body.getFixtureList().getDensity()));
                     // Mass
-                    column(I18n.get(PREFIX + "mass"), localize("mass.num", ((PhysicsRigidBody) pco).getMass()));
+                    column(I18n.get(PREFIX + "mass"), localize("mass.num", body.getMass()));
                 }
                 // Position
-                value = pco.getPhysicsLocation(null);
+                value = body.getPosition();
                 column(I18n.get(PREFIX + "position"), localize("position.num", value));
-                if (!pco.isStatic()) {
+                if (!isStatic) {
                     // Linear velocity
-                    value = ((PhysicsRigidBody) pco).getLinearVelocity(null);
+                    value = body.getLinearVelocity();
                     column(I18n.get(PREFIX + "linear_velocity"), localize("linear_velocity.num", value));
                 }
                 // Rotation
-                column(I18n.get(PREFIX + "rotation"), localize("rotation.num", (float) QuaternionUtil.getZRadians(pco.getPhysicsRotation(null))));
-                if (!pco.isStatic()) {
+                column(I18n.get(PREFIX + "rotation"), localize("rotation.num", body.getAngle()));
+                if (!isStatic) {
                     // Angular velocity
-                    column(I18n.get(PREFIX + "angular_velocity"), localize("angular_velocity.num", ((PhysicsRigidBody) pco).getAngularVelocityLocal(null).z));
+                    column(I18n.get(PREFIX + "angular_velocity"), localize("angular_velocity.num", body.getAngularVelocity()));
                 }
-                //TODO: momentum? (linear and angular)
 
-                if (!pco.isStatic()) {
-                    // Kinetic energy
-                    column(I18n.get(PREFIX + "kinetic_energy"), localize("kinetic_energy.num", (float) ((PhysicsRigidBody) pco).kineticEnergy()));
-                    // Mechanical Energy
-                    column(I18n.get(PREFIX + "mechanical_energy"), localize("mechanical_energy.num", (float) ((PhysicsRigidBody) pco).mechanicalEnergy()));
-                }
+                //TODO: display all kinds of energy
+//                if (isStatic) {
+//                    // Kinetic energy
+//                    column(I18n.get(PREFIX + "kinetic_energy"), localize("kinetic_energy.num", (float) ((PhysicsRigidBody) body).kineticEnergy()));
+//                    // Mechanical Energy
+//                    column(I18n.get(PREFIX + "mechanical_energy"), localize("mechanical_energy.num", (float) ((PhysicsRigidBody) body).mechanicalEnergy()));
+//                }
 
                 ImGui.endTable();
             }
@@ -436,16 +443,17 @@ public class PcoEditGui {
         public ModuleCollision() {}
 
         @Override
-        public void build(PcoEditGui gui, PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
+        public void build(BodyEditGui gui, Body body, BodyUserObj obj) {
+            int mask = body.getFixtureList().getFilterData().maskBits;
             for (int i=0; i<16; i++) {
                 int group = 1 << i;
-                boolean hasGroup = (pco.getCollideWithGroups() & group) != 0;
+                boolean hasGroup = (mask & group) != 0;
                 if (ImGui.selectable(I18n.get(PREFIX + "layer", i + 1), hasGroup, ImGuiSelectableFlags.SpanAllColumns)) {
                     int newGroup;
                     if (hasGroup) {
-                        newGroup = pco.getCollideWithGroups() - group;
+                        newGroup = mask - group;
                     } else {
-                        newGroup = pco.getCollideWithGroups() + group;
+                        newGroup = mask + group;
                     }
                     gui.executeOperation(new EditOperations2D.SetCollisionGroup(newGroup));
                 }
@@ -481,7 +489,7 @@ public class PcoEditGui {
         public ModulePlot() {}
 
         @Override
-        public void build(PcoEditGui gui, PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
+        public void build(BodyEditGui gui, Body body, BodyUserObj obj) {
             if (ImPlot.beginPlot("test")) {
                 ImPlot.plotLine("a", new Double[]{1D, 2D, 0.5D}, new Double[]{2D, 0.5D, 1D});
                 ImPlot.endPlot();
@@ -495,7 +503,7 @@ public class PcoEditGui {
         }
     }
 
-    public int getPcoId() {
-        return pcoId;
+    public int getbodyId() {
+        return bodyId;
     }
 }

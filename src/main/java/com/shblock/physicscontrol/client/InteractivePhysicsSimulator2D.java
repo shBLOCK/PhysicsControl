@@ -1,23 +1,24 @@
 package com.shblock.physicscontrol.client;
 
 import com.google.common.collect.Lists;
-import com.jme3.bullet.PhysicsSpace;
-import com.jme3.bullet.collision.PhysicsCollisionObject;
-import com.jme3.bullet.collision.PhysicsRayTestResult;
-import com.jme3.bullet.objects.PhysicsGhostObject;
-import com.jme3.bullet.objects.PhysicsRigidBody;
-import com.jme3.math.Vector3f;
+import com.shblock.physicscontrol.PhysicsControl;
 import com.shblock.physicscontrol.command.*;
-import com.shblock.physicscontrol.physics.physics2d.CollisionObjectUserObj2D;
-import com.shblock.physicscontrol.physics.util.Vector2f;
+import com.shblock.physicscontrol.physics.physics.BodyUserObj;
+import com.shblock.physicscontrol.physics.util.BodyHelper;
+import net.minecraft.client.resources.I18n;
+import org.apache.logging.log4j.Level;
+import org.jbox2d.collision.Collision;
+import org.jbox2d.collision.shapes.Shape;
+import org.jbox2d.common.Vec2;
+import org.jbox2d.dynamics.*;
 
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.function.Consumer;
 
 public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of space
     private static InteractivePhysicsSimulator2D currentInstance;
 
-    private PhysicsSpace space;
+    private World space;
     private int currentId = -1;
     private boolean simulationRunning;
     public enum StepModes {
@@ -25,11 +26,15 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
         FRAME //step the simulation every frame
     }
     private StepModes stepMode = StepModes.FRAME;
+    private int velocityIterations = 10;
+    private int positionIterations = 8;
     private float simulationSpeed = 1F;
+    private float singleStepLength = 1F / 60F;
     private CommandHistory commandHistory;
-    private final List<PhysicsCollisionObject> selectedObjects = new ArrayList<>(); //TODO: store only id when serializing
+    private final Map<Integer, Body> idBodyMap = new HashMap<>();
+    private final List<Body> selectedObjects = new ArrayList<>(); //TODO: store only id when serializing
 
-    public InteractivePhysicsSimulator2D(PhysicsSpace space) {
+    public InteractivePhysicsSimulator2D(World space) {
         if (currentInstance != null) {
             throw new RuntimeException("You have to close the last Instance to create a new one!");
         }
@@ -53,23 +58,23 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
 
     public void singleStep(int steps) {
         for (int i=0; i<steps; i++) {
-            this.space.update(this.space.getAccuracy(), 0);
+            this.space.step(this.singleStepLength, this.velocityIterations, this.positionIterations);
             update();
         }
     }
 
     public void step(float time) {
-        this.space.update(time);
+        this.space.step(time, this.velocityIterations, this.positionIterations);
         update();
     }
 
     private void update() {
-        for (int i=0; i<this.selectedObjects.size(); i++) {
-            if (!this.selectedObjects.get(i).isInWorld()) {
-                this.selectedObjects.remove(i);
-                i--;
-            }
-        }
+//        for (int i=0; i<this.selectedObjects.size(); i++) {
+//            if (this.selectedObjects.get(i).getWorld() == null) {
+//                this.selectedObjects.remove(i);
+//                i--;
+//            }
+//        }
     }
 
     //Should be called every tick (0.05 sec)
@@ -86,45 +91,60 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
         }
     }
 
-    public PhysicsCollisionObject getPcoFromId(int id) {
-        for (PhysicsCollisionObject pco : getSpace().getPcoList()) {
-            if (((CollisionObjectUserObj2D) pco.getUserObject()).getId() == id) {
-                return pco;
+    public void forEachBody(Consumer<Body> consumer) {
+        Body body = getSpace().getBodyList();
+        while (body != null) {
+            consumer.accept(body);
+            body = body.m_next;
+        }
+    }
+
+    public Body getBodyFromId(int id) {
+        return this.idBodyMap.getOrDefault(id, null);
+    }
+
+    public Body addBodyLocal(BodyDef bodyDef, FixtureDef fixture) {
+        return this.addBodyLocal(bodyDef, new FixtureDef[]{fixture});
+    }
+
+    public Body addBodyLocal(BodyDef bodyDef, FixtureDef[] fixtures) {
+//        body.setSleepingAllowed(false);
+        Body body = getSpace().createBody(bodyDef);
+        assert body.getUserData() instanceof BodyUserObj;
+        this.idBodyMap.put(((BodyUserObj) body.getUserData()).getId(), body);
+        for (FixtureDef fixture : fixtures) {
+            try {
+                body.createFixture(fixture);
+            } catch (AssertionError error) {
+                PhysicsControl.log(Level.WARN, "Failed to create fixture, did you make your polygon too small?");
             }
         }
-        return null;
+        return body;
     }
 
-    public void addPco(PhysicsCollisionObject pco) {
-        if (pco instanceof PhysicsRigidBody) {
-            ((PhysicsRigidBody) pco).setEnableSleep(false);
-        }
-        getSpace().addCollisionObject(pco);
+    public void setBodyPosLocal(Body body, Vec2 pos) {
+        body.setTransform(pos, body.getAngle());
     }
 
-    public void movePco(PhysicsCollisionObject pco, Vector2f offset) {
-        Vector3f pos = pco.getPhysicsLocation(null).add(offset.toVec3());
-        if (pco instanceof PhysicsRigidBody) {
-            ((PhysicsRigidBody) pco).setPhysicsLocation(pos);
-        } else if (pco instanceof PhysicsGhostObject) {
-            ((PhysicsGhostObject) pco).setPhysicsLocation(pos);
-        }
-        InteractivePhysicsSimulator2D.getInstance().reAddToUpdate(pco);
+    public void moveBodyLocal(Body body, Vec2 offset) {
+        setBodyPosLocal(body, body.getPosition().add(offset));
     }
 
-    public void deletePco(PhysicsCollisionObject pco) {
-        getSpace().removeCollisionObject(pco);
+    public void deleteBodyLocal(Body body) {
+        getSpace().destroyBody(body);
+        assert body.getUserData() instanceof BodyUserObj;
+        this.idBodyMap.remove(((BodyUserObj) body.getUserData()).getId());
     }
 
-    public void moveSelected(Vector2f offset, boolean isFirst) {
-        executeCommand(new CommandMoveCollisionObjects(this.selectedObjects, offset.toVec3(), isFirst));
+    public void moveSelected(Vec2 offset, boolean isFirst) {
+        executeCommand(new CommandSetBodyPos(this.selectedObjects, offset, isFirst));
     }
 
     public void deleteSelected() {
-        executeCommand(new CommandDeleteCollisionObjects(this.selectedObjects));
+        executeCommand(new CommandDeleteBodies(this.selectedObjects));
     }
 
-    public void changeZLevel(PhysicsCollisionObject pco, int change) {
+    public void changeZLevel(Body pco, int change) {
         executeCommand(new CommandChangeZLevel(change, Lists.newArrayList(pco)));
     }
 
@@ -132,61 +152,93 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
         executeCommand(new CommandChangeZLevel(change, this.selectedObjects));
     }
 
-    public void reAddToUpdate(PhysicsCollisionObject pco) { // we can update the Collision Object's position by remove and re adding it to the space
-        getSpace().removeCollisionObject(pco);
-        getSpace().addCollisionObject(pco);
+    public void startMove() {
+        for (Body body : this.selectedObjects) {
+            body.setGravityScale(0F);
+            body.setLinearVelocity(new Vec2(0F, 0F));
+            body.setAngularVelocity(0F);
+        }
     }
 
-    public List<PhysicsCollisionObject> pointTest(Vector2f point) {
-        return this.pointRayTest(point);
+    public void stopMove() {
+        for (Body body : this.selectedObjects) {
+            body.setGravityScale(1F);
+            body.setAwake(true);
+            body.setActive(true);
+        }
     }
 
-//    public List<PhysicsCollisionObject> pointContactTest(Vector2f point) {
-//        PhysicsGhostObject pco = new PhysicsGhostObject(new SphereCollisionShape(0.001F));
-//        pco.setPhysicsLocation(point.toVec3());
-//        return new ArrayList<>(contactTest(pco));
-//    }
-
-    private List<PhysicsCollisionObject> pointRayTest(Vector2f point) {
-        Vector3f vec = point.toVec3();
-        Vector3f offset = new Vector3f(0F, 0F, 10000F);
-        return getSpace().rayTestRaw(
-                vec.add(offset),
-                vec.subtract(offset)
-        ).stream().map(PhysicsRayTestResult::getCollisionObject).collect(Collectors.toList());
+    public List<Body> pointTest(Vec2 point) {
+        List<Body> results = new ArrayList<>();
+        forEachBody(body -> {
+            BodyHelper.forEachFixture(
+                    body,
+                    fixture -> {
+                        if (fixture.testPoint(point)) {
+                            results.add(body);
+                        }
+                    }
+            );
+        });
+        return results;
     }
 
-    public List<PhysicsCollisionObject> pointTestSorted(Vector2f point) {
-        List<PhysicsCollisionObject> result = pointTest(point);
-        result.sort(Comparator.comparingInt(a -> ((CollisionObjectUserObj2D) a.getUserObject()).getZLevel()));
+    public List<Body> pointTestSorted(Vec2 point) {
+        List<Body> result = pointTest(point);
+        result.sort(Comparator.comparingInt(a -> ((BodyUserObj) a.getUserData()).getZLevel()));
         result = Lists.reverse(result);
         return result;
     }
 
-    public boolean isPointOnAnySelected(Vector2f point) {
+    public boolean isPointOnAnySelected(Vec2 point) {
         if (!isAnySelected()) {
             return false;
         }
-        List<PhysicsCollisionObject> results = pointTestSorted(point);
+        List<Body> results = pointTestSorted(point);
         if (results.isEmpty()) {
             return false;
         }
         return isSelected(results.get(0));
     }
 
-    public Collection<PhysicsCollisionObject> contactTest(PhysicsCollisionObject pco) {
-        Collection<PhysicsCollisionObject> results = new HashSet<>();
-        getSpace().contactTest(pco, event -> {
-            if (event.getObjectA() == pco) {
-                results.add(event.getObjectB());
-            } else {
-                results.add(event.getObjectA());
+    public Collection<Body> contactTest(Body pco) { //TODO
+        Collection<Body> results = new HashSet<>();
+        Collision collision = getSpace().getPool().getCollision();
+
+        Body body = getSpace().getBodyList();
+        while (body != null) {
+            if (!(body.getUserData() instanceof BodyUserObj)) { // to avoid temporary bodies
+                body = body.m_next;
+                continue;
             }
-        });
+            Fixture fa = body.getFixtureList();
+            while (fa != null) {
+                Shape sa = fa.getShape();
+
+                Fixture fb = pco.getFixtureList();
+                boolean didCollide = false;
+                while (fb != null) {
+                    Shape sb = fb.getShape();
+                    if (collision.testOverlap(sa, 0, sb, 0, body.getTransform(), pco.getTransform())) {
+                        didCollide = true;
+                        results.add(body);
+                        break;
+                    }
+                    fb = fb.m_next;
+                }
+                if (didCollide) {
+                    break;
+                }
+
+                fa = fa.m_next;
+            }
+            body = body.m_next;
+        }
+
         return results;
     }
 
-    public boolean isSelected(PhysicsCollisionObject pco) {
+    public boolean isSelected(Body pco) {
         return this.selectedObjects.contains(pco);
     }
 
@@ -194,7 +246,7 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
         return !this.selectedObjects.isEmpty();
     }
 
-    public boolean select(PhysicsCollisionObject pco) {
+    public boolean select(Body pco) {
         if (!isSelected(pco)) {
             this.selectedObjects.add(pco);
             return true;
@@ -204,12 +256,10 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
 
     public void selectAll() {
         unselectAll();
-        for (PhysicsCollisionObject pco : getSpace().getPcoList()) {
-            select(pco);
-        }
+        forEachBody(body -> select(body));
     }
 
-    public boolean unselect(PhysicsCollisionObject obj) {
+    public boolean unselect(Body obj) {
         return this.selectedObjects.remove(obj);
     }
 
@@ -217,11 +267,11 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
         this.selectedObjects.clear();
     }
 
-    public PhysicsSpace getSpace() {
+    public World getSpace() {
         return this.space;
     }
 
-    public void setSpace(PhysicsSpace new_space) {
+    public void setSpace(World new_space) {
         this.space = new_space;
     }
 
@@ -287,8 +337,16 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
         this.commandHistory = commandHistory;
     }
 
+    public float getSingleStepLength() {
+        return singleStepLength;
+    }
+
     public int nextId() {
         this.currentId++;
         return this.currentId;
+    }
+
+    public BodyUserObj getNextUserObj(String name) {
+        return new BodyUserObj(InteractivePhysicsSimulator2D.getInstance().nextId(), name);
     }
 }

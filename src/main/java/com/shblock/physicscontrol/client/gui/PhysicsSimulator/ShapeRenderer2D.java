@@ -1,24 +1,21 @@
 package com.shblock.physicscontrol.client.gui.PhysicsSimulator;
 
-import com.jme3.bullet.collision.PhysicsCollisionObject;
-import com.jme3.bullet.collision.shapes.Box2dShape;
-import com.jme3.bullet.collision.shapes.CollisionShape;
-import com.jme3.bullet.collision.shapes.GImpactCollisionShape;
-import com.jme3.bullet.collision.shapes.SphereCollisionShape;
-import com.jme3.bullet.collision.shapes.infos.CompoundMesh;
-import com.jme3.bullet.collision.shapes.infos.IndexedMesh;
-import com.jme3.math.Vector3f;
 import com.mojang.blaze3d.matrix.MatrixStack;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.shblock.physicscontrol.client.gui.RenderHelper;
-import com.shblock.physicscontrol.physics.physics2d.CollisionObjectUserObj2D;
-import com.shblock.physicscontrol.physics.util.MeshHelper;
-import com.shblock.physicscontrol.physics.util.Vector2f;
+import com.shblock.physicscontrol.physics.physics.BodyUserObj;
+import com.shblock.physicscontrol.physics.util.QuaternionUtil;
 import net.minecraft.client.renderer.BufferBuilder;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.math.vector.Quaternion;
+import org.jbox2d.collision.shapes.CircleShape;
+import org.jbox2d.collision.shapes.PolygonShape;
+import org.jbox2d.collision.shapes.Shape;
+import org.jbox2d.common.Vec2;
+import org.jbox2d.dynamics.Body;
+import org.jbox2d.dynamics.Fixture;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
@@ -31,21 +28,20 @@ public class ShapeRenderer2D {
     public static float FRAME_WIDTH = 1F;
     public static float SELECTED_FRAME_WIDTH = 5F;
 
-    public static void drawCollisionObject(MatrixStack matrixStack, PhysicsCollisionObject body, boolean isSelected) {
+    public static void drawBody(MatrixStack matrixStack, Body body, boolean isSelected) {
         matrixStack.pushPose();
 
         RenderSystem.enableDepthTest();
 
-        Vector2f pos = new Vector2f(body.getPhysicsLocation(null));
-        com.jme3.math.Quaternion q = body.getPhysicsRotation(null).inverse();
-        Quaternion rotation = new Quaternion(q.getX(), q.getY(), q.getZ(), q.getW());
-        Vector2f scale = new Vector2f(body.getScale(null));
+        Vec2 pos = new Vec2(body.getPosition());
+        Quaternion rotation = QuaternionUtil.setZRadians(-body.getAngle());
+//        Vec2 scale = new Vec2(body.getScale(null));
 
-        CollisionShape shape = body.getCollisionShape();
-        CollisionObjectUserObj2D userObj = (CollisionObjectUserObj2D) body.getUserObject();
+        Shape shape = body.getFixtureList().m_shape;
+        BodyUserObj userObj = (BodyUserObj) body.getUserData();
 
         matrixStack.translate(pos.x, -pos.y, userObj.getZLevel() * Z_LEVEL_STEP - 1000F);
-        matrixStack.scale(scale.x, scale.y, 1F);
+//        matrixStack.scale(scale.x, scale.y, 1F);
         matrixStack.mulPose(rotation);
 
         Matrix4f matrix = matrixStack.last().pose();
@@ -57,8 +53,8 @@ public class ShapeRenderer2D {
         float dr = r * RenderHelper.COLOR_DECREASE;
         float dg = g * RenderHelper.COLOR_DECREASE;
         float db = b * RenderHelper.COLOR_DECREASE;
-        if (shape instanceof SphereCollisionShape) {
-            float radius = ((SphereCollisionShape) shape).getRadius();
+        if (shape instanceof CircleShape) {
+            float radius = shape.getRadius();
             RenderHelper.drawCircle(matrix, radius, r, g, b, a);
             RenderHelper.drawCircleDirection(matrix, radius, dr, dg, db, a);
             if (isSelected) {
@@ -66,33 +62,17 @@ public class ShapeRenderer2D {
             } else {
                 RenderHelper.drawCircleFrame(matrix, radius, FRAME_WIDTH, dr, dg, db, a);
             }
-        } else if (shape instanceof Box2dShape) {
-            Box2dShape box = (Box2dShape) shape;
-            Vector3f size = box.getHalfExtents(null);
-            RenderHelper.drawBox(matrix, -size.x, -size.y, size.x, size.y, r, g, b, a);
-            if (isSelected) {
-                RenderHelper.drawBoxFrame(matrix, -size.x, -size.y, size.x, size.y, SELECTED_FRAME_WIDTH, 1F, 1F, 1F, 1F);
+        } else if (shape instanceof PolygonShape) {
+            PolygonShape poly = (PolygonShape) shape;
+
+            int count;
+            Vec2[] vertexes;
+            if (userObj.getPolygonVertexCache() != null) {
+                vertexes = userObj.getPolygonVertexCache();
+                count = vertexes.length;
             } else {
-                RenderHelper.drawBoxFrame(matrix, -size.x, -size.y, size.x, size.y, FRAME_WIDTH, dr, dg, db, a);
-            }
-        } else if (shape instanceof GImpactCollisionShape) {
-            CompoundMesh compoundMesh = MeshHelper.getCompoundMesh((GImpactCollisionShape) shape);
-            List<Vector2f> renderData = new ArrayList<>();
-            List<Vector2f> vertexes = new ArrayList<>();
-            for (IndexedMesh mesh : MeshHelper.getSubMeshes(compoundMesh)) {
-                IntBuffer indexes = mesh.copyIndices();
-                indexes.flip();
-                FloatBuffer vertexBuffer = mesh.copyVertexPositions();
-                vertexBuffer.flip();
-                while (vertexBuffer.hasRemaining()) {
-                    vertexes.add(new Vector2f(vertexBuffer.get(), vertexBuffer.get()));
-                    vertexBuffer.get(); // ignore the Z value
-                }
-                while (indexes.hasRemaining()) {
-                    renderData.add(vertexes.get(indexes.get()));
-                    renderData.add(vertexes.get(indexes.get()));
-                    renderData.add(vertexes.get(indexes.get()));
-                }
+                vertexes = poly.getVertices();
+                count = poly.getVertexCount();
             }
 
             Tessellator tessellator = Tessellator.getInstance();
@@ -100,17 +80,36 @@ public class ShapeRenderer2D {
 
             RenderSystem.disableTexture();
             RenderSystem.disableCull();
-            GL11.glEnable(GL11.GL_LINE_SMOOTH);
-            RenderSystem.lineWidth(isSelected ? SELECTED_FRAME_WIDTH : FRAME_WIDTH);
 
-            builder.begin(GL11.GL_TRIANGLES, DefaultVertexFormats.POSITION_COLOR);
-            for (Vector2f vertex : renderData) {
-                builder.vertex(matrix, vertex.x, -vertex.y, 0F).color(r, g, b, a).endVertex();
+            if (userObj.getPolygonVertexCache() != null) { // this means this shape is a polygon
+                builder.begin(GL11.GL_TRIANGLES, DefaultVertexFormats.POSITION_COLOR);
+                Fixture fixture = body.getFixtureList();
+                while (fixture != null) {
+                    Shape s = fixture.getShape();
+                    if (s instanceof PolygonShape) {
+                        PolygonShape polygon = (PolygonShape) s;
+                        for (int v=0; v<polygon.getVertexCount(); v++) {
+                            Vec2 vertex = polygon.m_vertices[v];
+                            builder.vertex(matrix, vertex.x, -vertex.y, 0F).color(r, g, b, a).endVertex();
+                        }
+                    }
+                    fixture = fixture.m_next;
+                }
+            } else { // this means this shape is a box
+                builder.begin(GL11.GL_POLYGON, DefaultVertexFormats.POSITION_COLOR);
+                for (int i = 0; i < count; i++) {
+                    Vec2 vertex = vertexes[i];
+                    builder.vertex(matrix, vertex.x, -vertex.y, 0F).color(r, g, b, a).endVertex();
+                }
             }
             tessellator.end();
 
+            GL11.glEnable(GL11.GL_LINE_SMOOTH);
+            RenderSystem.lineWidth(isSelected ? SELECTED_FRAME_WIDTH : FRAME_WIDTH);
+
             builder.begin(GL11.GL_LINE_LOOP, DefaultVertexFormats.POSITION_COLOR);
-            for (Vector2f vertex : vertexes) {
+            for (int i=0; i<count; i++) {
+                Vec2 vertex = vertexes[i];
                 if (isSelected) {
                     builder.vertex(matrix, vertex.x, -vertex.y, 0F).color(1F, 1F, 1F, 1F).endVertex();
                 } else {
@@ -123,18 +122,6 @@ public class ShapeRenderer2D {
             RenderSystem.enableCull();
             GL11.glDisable(GL11.GL_LINE_SMOOTH);
             RenderSystem.lineWidth(1F);
-
-            // for debug
-            builder.begin(GL11.GL_LINES, DefaultVertexFormats.POSITION_COLOR);
-            for (int i=0; i<renderData.size() / 3; i++) {
-                builder.vertex(matrix, renderData.get(i * 3).x, -renderData.get(i * 3).y, 0F).color(dr, dg, db, a).endVertex();
-                builder.vertex(matrix, renderData.get(i * 3 + 1).x, -renderData.get(i * 3 + 1).y, 0F).color(dr, dg, db, a).endVertex();
-                builder.vertex(matrix, renderData.get(i * 3 + 1).x, -renderData.get(i * 3 + 1).y, 0F).color(dr, dg, db, a).endVertex();
-                builder.vertex(matrix, renderData.get(i * 3 + 2).x, -renderData.get(i * 3 + 2).y, 0F).color(dr, dg, db, a).endVertex();
-                builder.vertex(matrix, renderData.get(i * 3 + 2).x, -renderData.get(i * 3 + 2).y, 0F).color(dr, dg, db, a).endVertex();
-                builder.vertex(matrix, renderData.get(i * 3).x, -renderData.get(i * 3).y, 0F).color(dr, dg, db, a).endVertex();
-            }
-            tessellator.end();
         }
 
         RenderSystem.disableDepthTest();

@@ -1,36 +1,38 @@
 package com.shblock.physicscontrol.command;
 
-import com.jme3.bullet.collision.PhysicsCollisionObject;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
-import com.shblock.physicscontrol.physics.physics2d.CollisionObjectUserObj2D;
+import com.shblock.physicscontrol.physics.physics.BodyUserObj;
 import net.minecraft.nbt.CompoundNBT;
+import org.jbox2d.dynamics.Body;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class CommandDeleteCollisionObjects extends PhysicsCommandBase {
+public class CommandDeleteBodies extends PhysicsCommandBase {
     private List<Integer> objects;
 
-    public CommandDeleteCollisionObjects() {}
+    public CommandDeleteBodies() {}
 
-    public CommandDeleteCollisionObjects(List<PhysicsCollisionObject> objects) {
+    public CommandDeleteBodies(List<Body> objects) {
         super(null);
-        this.objects = objects.stream().map(pco -> ((CollisionObjectUserObj2D) pco.getUserObject()).getId()).collect(Collectors.toList());
+        this.objects = objects.stream().map(pco -> ((BodyUserObj) pco.getUserData()).getId()).collect(Collectors.toList());
     }
 
     @Override
     public void execute() {
-        for (PhysicsCollisionObject pco : InteractivePhysicsSimulator2D.getInstance().getSpace().getPcoList()) {
-            if (this.objects.contains(((CollisionObjectUserObj2D) pco.getUserObject()).getId())) {
-                InteractivePhysicsSimulator2D.getInstance().deletePco(pco);
+        InteractivePhysicsSimulator2D.getInstance().forEachBody(
+            body -> {
+                if (this.objects.contains(((BodyUserObj) body.getUserData()).getId())) {
+                    InteractivePhysicsSimulator2D.getInstance().deleteBodyLocal(body);
+                }
             }
-        }
+        );
     }
 
     @Override
     public String getName() {
-        return "delete_collision_objects";
+        return "delete_bodies";
     }
 
     @Override

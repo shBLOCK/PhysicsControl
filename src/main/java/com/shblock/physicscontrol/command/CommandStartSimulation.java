@@ -1,6 +1,5 @@
 package com.shblock.physicscontrol.command;
 
-import com.jme3.bullet.PhysicsSpace;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
 
 public class CommandStartSimulation extends PhysicsCommandBase {

@@ -1,10 +1,10 @@
 package com.shblock.physicscontrol.command;
 
-import com.jme3.bullet.PhysicsSpace;
-import com.jme3.bullet.collision.PhysicsCollisionObject;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
-import com.shblock.physicscontrol.physics.physics2d.CollisionObjectUserObj2D;
+import com.shblock.physicscontrol.physics.physics.BodyUserObj;
 import net.minecraft.nbt.CompoundNBT;
+import org.jbox2d.dynamics.Body;
+import org.jbox2d.dynamics.World;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,40 +17,42 @@ public class CommandChangeZLevel extends PhysicsCommandBase { //TODO: don't let 
 
     public CommandChangeZLevel() {}
 
-    public CommandChangeZLevel(int change, List<PhysicsCollisionObject> objects) {
+    public CommandChangeZLevel(int change, List<Body> objects) {
         super(null);
         this.change = change;
-        this.objects = objects.stream().map(pco -> ((CollisionObjectUserObj2D) pco.getUserObject()).getId()).collect(Collectors.toList());
+        this.objects = objects.stream().map(pco -> ((BodyUserObj) pco.getUserData()).getId()).collect(Collectors.toList());
     }
 
     @Override
     public void execute() {
-        List<CollisionObjectUserObj2D> obj_list = new ArrayList<>();
-        for (PhysicsCollisionObject pco : InteractivePhysicsSimulator2D.getInstance().getSpace().getPcoList()) {
-            if (this.objects.contains(((CollisionObjectUserObj2D) pco.getUserObject()).getId())) {
-                obj_list.add((CollisionObjectUserObj2D) pco.getUserObject());
+        List<BodyUserObj> obj_list = new ArrayList<>();
+        InteractivePhysicsSimulator2D.getInstance().forEachBody(
+            body -> {
+                if (this.objects.contains(((BodyUserObj) body.getUserData()).getId())) {
+                    obj_list.add((BodyUserObj) body.getUserData());
+                }
             }
-        }
+        );
 
-        PhysicsSpace space = InteractivePhysicsSimulator2D.getInstance().getSpace();
+        World space = InteractivePhysicsSimulator2D.getInstance().getSpace();
 
         for (int i=0; i<Math.abs(this.change); i++) {
             change(obj_list, space, this.change > 0 ? 1 : -1);
         }
     }
 
-    private void change(List<CollisionObjectUserObj2D> obj_list, PhysicsSpace space, int change) {
+    private void change(List<BodyUserObj> obj_list, World space, int change) {
         obj_list.sort((a, b) -> {
             return Integer.compare(a.getZLevel(), b.getZLevel()) * (-change); // if change=-1, sort the z-level in inverted order
         });
-        for (CollisionObjectUserObj2D obj : obj_list) {
-            if (change == 1 && obj.getZLevel() >= space.countCollisionObjects() - 1) {
+        for (BodyUserObj obj : obj_list) {
+            if (change == 1 && obj.getZLevel() >= space.getBodyCount() - 1) {
                 return;
             } else if (change == -1 && obj.getZLevel() <= 0) {
                 return;
             }
         }
-        for (CollisionObjectUserObj2D obj : obj_list) {
+        for (BodyUserObj obj : obj_list) {
             if (change == 1) {
                 obj.moveZLevelUp(space);
             } else {

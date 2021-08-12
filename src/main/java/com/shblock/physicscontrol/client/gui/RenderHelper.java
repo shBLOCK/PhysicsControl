@@ -1,11 +1,11 @@
 package com.shblock.physicscontrol.client.gui;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.shblock.physicscontrol.physics.util.Vector2f;
 import net.minecraft.client.renderer.BufferBuilder;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.util.math.vector.Matrix4f;
+import org.jbox2d.common.Vec2;
 import org.lwjgl.opengl.GL11;
 
 import java.util.List;
@@ -138,14 +138,14 @@ public class RenderHelper {
         drawBox(matrix, x, y, x + w, y + h, r, g, b, a);
     }
 
-    public static void drawPolygon(Matrix4f matrix, List<Vector2f> vertexes, float r, float g, float b, float a) {
+    public static void drawPolygon(Matrix4f matrix, List<Vec2> vertexes, float r, float g, float b, float a) {
         RenderSystem.disableTexture();
         RenderSystem.disableCull();
 
         Tessellator tessellator = Tessellator.getInstance();
         BufferBuilder builder = tessellator.getBuilder();
         builder.begin(GL11.GL_POLYGON, DefaultVertexFormats.POSITION_COLOR);
-        for (Vector2f vec : vertexes) {
+        for (Vec2 vec : vertexes) {
             builder.vertex(matrix, vec.x, vec.y, 0F).color(r, g, b, a).endVertex();
         }
         tessellator.end();
@@ -154,7 +154,7 @@ public class RenderHelper {
         RenderSystem.enableCull();
     }
 
-    public static void drawPolygonFrame(Matrix4f matrix, List<Vector2f> vertexes, float lineWidth, float r, float g, float b, float a) {
+    public static void drawPolygonFrame(Matrix4f matrix, List<Vec2> vertexes, float lineWidth, float r, float g, float b, float a) {
         RenderSystem.disableTexture();
         GL11.glEnable(GL11.GL_LINE_SMOOTH);
         RenderSystem.lineWidth(lineWidth);
@@ -162,9 +162,26 @@ public class RenderHelper {
         Tessellator tessellator = Tessellator.getInstance();
         BufferBuilder builder = tessellator.getBuilder();
         builder.begin(GL11.GL_LINE_LOOP, DefaultVertexFormats.POSITION_COLOR);
-        for (Vector2f vec : vertexes) {
+        for (Vec2 vec : vertexes) {
             builder.vertex(matrix, vec.x, vec.y, 0F).color(r, g, b, a).endVertex();
         }
+        tessellator.end();
+
+        RenderSystem.enableTexture();
+        GL11.glDisable(GL11.GL_LINE_SMOOTH);
+        RenderSystem.lineWidth(1F);
+    }
+
+    public static void drawLine(Matrix4f matrix, Vec2 start, Vec2 end, float lineWidth, float r, float g, float b, float a) {
+        RenderSystem.disableTexture();
+        GL11.glEnable(GL11.GL_LINE_SMOOTH);
+        RenderSystem.lineWidth(lineWidth);
+
+        Tessellator tessellator = Tessellator.getInstance();
+        BufferBuilder builder = tessellator.getBuilder();
+        builder.begin(GL11.GL_LINES, DefaultVertexFormats.POSITION_COLOR);
+        builder.vertex(matrix, start.x, end.y, 0F).color(r, g, b, a).endVertex();
+        builder.vertex(matrix, start.x, end.y, 0F).color(r, g, b, a).endVertex();
         tessellator.end();
 
         RenderSystem.enableTexture();

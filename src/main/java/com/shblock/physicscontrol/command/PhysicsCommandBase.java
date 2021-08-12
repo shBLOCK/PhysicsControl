@@ -1,9 +1,9 @@
 package com.shblock.physicscontrol.command;
 
-import com.jme3.bullet.PhysicsSpace;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
 import com.shblock.physicscontrol.physics.util.NBTSerializer;
 import net.minecraft.nbt.CompoundNBT;
+import org.jbox2d.dynamics.World;
 
 import javax.annotation.Nullable;
 
@@ -12,7 +12,7 @@ public abstract class PhysicsCommandBase extends AbstractCommand {
 
     public PhysicsCommandBase() {}
 
-    public PhysicsCommandBase(@Nullable PhysicsSpace space) {
+    public PhysicsCommandBase(@Nullable World space) {
         if (space == null) {
             space = InteractivePhysicsSimulator2D.getInstance().getSpace();
         }
@@ -29,7 +29,7 @@ public abstract class PhysicsCommandBase extends AbstractCommand {
 
     @Override
     public void undo() {
-        InteractivePhysicsSimulator2D.getInstance().setSpace(NBTSerializer.physicsSpaceFromNBT(old_space));
+        InteractivePhysicsSimulator2D.getInstance().setSpace(NBTSerializer.spaceFromNBT(old_space));
     }
 
     @Override

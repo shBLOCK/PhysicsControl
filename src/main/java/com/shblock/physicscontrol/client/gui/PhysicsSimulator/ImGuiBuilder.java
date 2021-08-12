@@ -5,6 +5,7 @@ import imgui.ImGui;
 import imgui.ImVec2;
 import imgui.ImVec4;
 import imgui.flag.ImGuiCol;
+import imgui.flag.ImGuiMouseButton;
 import imgui.flag.ImGuiWindowFlags;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.I18n;
@@ -18,7 +19,9 @@ class ImGuiBuilder {
         return GuiPhysicsSimulator.tryGetInstance();
     }
 
-    protected static void buildToolSelectorUI() {
+    protected static ToolEditGui buildToolSelectorUI() {
+        ToolEditGui newToolGui = null;
+
         ImGui.begin("ToolBar", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse);
         ImVec2 windowPos = new ImVec2();
         ImGui.getWindowPos(windowPos);
@@ -27,7 +30,7 @@ class ImGuiBuilder {
         ImVec2 itemSpacing = new ImVec2();
         ImGui.getStyle().getItemSpacing(itemSpacing);
         float windowX2 = windowPos.x + windowSize.x;
-
+        int last_group = 0;
         for (Tools tool : Tools.values()) {
             int i = tool.ordinal();
 
@@ -46,17 +49,27 @@ class ImGuiBuilder {
                 ImGui.beginTooltip();
                 ImGui.text(I18n.get("physicscontrol.gui.sim.tooltip.tool_base", I18n.get(tool.localizeName)));
                 ImGui.endTooltip();
+
+                if (ImGui.isMouseClicked(ImGuiMouseButton.Right)) {
+                    newToolGui = new ToolEditGui(tool);
+                }
             }
 
-            ImVec2 lastButtonPos = new ImVec2();
-            ImGui.getItemRectMax(lastButtonPos);
-            float lastButtonX2 = lastButtonPos.x;
-            float nextButtonX2 = lastButtonX2 + itemSpacing.x + 32F;
-            if (i + 1 < Tools.values().length && nextButtonX2 < windowX2) {
-                ImGui.sameLine();
+            if (tool.group == last_group) {
+                ImVec2 lastButtonPos = new ImVec2();
+                ImGui.getItemRectMax(lastButtonPos);
+                float lastButtonX2 = lastButtonPos.x;
+                float nextButtonX2 = lastButtonX2 + itemSpacing.x + 32F;
+                if (i + 1 < Tools.values().length && nextButtonX2 < windowX2) {
+                    ImGui.sameLine();
+                }
+            } else {
+                ImGui.separator();
             }
         }
 
         ImGui.end();
+
+        return newToolGui;
     }
 }

@@ -1,17 +1,17 @@
 package com.shblock.physicscontrol.command;
 
-import com.jme3.bullet.collision.PhysicsCollisionObject;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
-import com.shblock.physicscontrol.physics.physics2d.CollisionObjectUserObj2D;
+import com.shblock.physicscontrol.physics.physics.BodyUserObj;
 import net.minecraft.nbt.CompoundNBT;
+import org.jbox2d.dynamics.Body;
 
-public class CommandEditPcoProperty extends PhysicsCommandBase {
+public class CommandEditBodyProperty extends PhysicsCommandBase {
     private int pcoId;
     private EditOperations2D.EditOperationBase operation;
 
-    public CommandEditPcoProperty() {}
+    public CommandEditBodyProperty() {}
 
-    public CommandEditPcoProperty(int pcoId, EditOperations2D.EditOperationBase operation) {
+    public CommandEditBodyProperty(int pcoId, EditOperations2D.EditOperationBase operation) {
         super(null);
         this.pcoId = pcoId;
         this.operation = operation;
@@ -19,14 +19,14 @@ public class CommandEditPcoProperty extends PhysicsCommandBase {
 
     @Override
     public void execute() {
-        PhysicsCollisionObject pco = InteractivePhysicsSimulator2D.getInstance().getPcoFromId(pcoId);
-        this.operation.execute(pco, (CollisionObjectUserObj2D) pco.getUserObject());
+        Body body = InteractivePhysicsSimulator2D.getInstance().getBodyFromId(pcoId);
+        this.operation.execute(body, (BodyUserObj) body.getUserData());
     }
 
     @Override
     public boolean mergeWith(AbstractCommand command) {
-        if (command instanceof CommandEditPcoProperty) {
-            return operation.mergeWith(((CommandEditPcoProperty) command).operation);
+        if (command instanceof CommandEditBodyProperty) {
+            return operation.mergeWith(((CommandEditBodyProperty) command).operation);
         }
         return false;
     }
@@ -46,6 +46,6 @@ public class CommandEditPcoProperty extends PhysicsCommandBase {
 
     @Override
     public String getName() {
-        return "edit_pco_property";
+        return "edit_body_property";
     }
 }

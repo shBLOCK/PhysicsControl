@@ -1,17 +1,16 @@
 package com.shblock.physicscontrol.command;
 
-import com.jme3.bullet.collision.PhysicsCollisionObject;
-import com.jme3.bullet.objects.PhysicsGhostObject;
-import com.jme3.bullet.objects.PhysicsRigidBody;
-import com.jme3.math.Quaternion;
-import com.jme3.math.Vector3f;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
-import com.shblock.physicscontrol.physics.physics2d.CollisionObjectUserObj2D;
+import com.shblock.physicscontrol.physics.physics.BodyUserObj;
+import com.shblock.physicscontrol.physics.util.BodyHelper;
 import com.shblock.physicscontrol.physics.util.NBTSerializer;
-import com.shblock.physicscontrol.physics.util.Vector2f;
+import com.shblock.physicscontrol.physics.util.ShapeHelper;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.common.util.INBTSerializable;
+import org.jbox2d.common.Vec2;
+import org.jbox2d.dynamics.Body;
+import org.jbox2d.dynamics.BodyType;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -70,7 +69,7 @@ public class EditOperations2D {
     }
 
     public abstract static class EditOperationBase implements INBTSerializable<CompoundNBT> {
-        public abstract void execute(PhysicsCollisionObject pco, CollisionObjectUserObj2D obj);
+        public abstract void execute(Body body, BodyUserObj obj);
 
         public abstract boolean mergeWith(EditOperationBase operation);
 
@@ -81,10 +80,6 @@ public class EditOperations2D {
         public abstract void deserializeNBT(CompoundNBT nbt);
 
         public abstract String getName();
-
-        protected static void reAddToUpdate(PhysicsCollisionObject pco) {
-            InteractivePhysicsSimulator2D.getInstance().reAddToUpdate(pco);
-        }
     }
 
     public static class SetName extends EditOperationBase {
@@ -97,7 +92,7 @@ public class EditOperations2D {
         }
 
         @Override
-        public void execute(PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
+        public void execute(Body body, BodyUserObj obj) {
             obj.setName(name);
         }
 
@@ -156,7 +151,7 @@ public class EditOperations2D {
         }
 
         @Override
-        public void execute(PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
+        public void execute(Body body, BodyUserObj obj) {
             obj.r = this.r;
             obj.g = this.g;
             obj.b = this.b;
@@ -201,19 +196,23 @@ public class EditOperations2D {
     }
 
     public static class SetDensity extends EditOperationBase {
-        private double density;
+        private float density;
 
         public SetDensity() {}
 
-        public SetDensity(double density) {
+        public SetDensity(float density) {
             this.density = density;
         }
 
         @Override
-        public void execute(PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
-            obj.setDensity(this.density);
-            ((PhysicsRigidBody) pco).setMass((float) obj.calculateMass());
-            reAddToUpdate(pco);
+        public void execute(Body body, BodyUserObj obj) {
+            BodyHelper.forEachFixture(
+                    body,
+                    fixture -> fixture.setDensity(this.density)
+            );
+            body.resetMassData();
+            body.setAwake(true);
+            body.setActive(true);
         }
 
         @Override
@@ -228,13 +227,13 @@ public class EditOperations2D {
         @Override
         public CompoundNBT serializeNBT() {
             CompoundNBT nbt = new CompoundNBT();
-            nbt.putDouble("density", this.density);
+            nbt.putFloat("density", this.density);
             return nbt;
         }
 
         @Override
         public void deserializeNBT(CompoundNBT nbt) {
-            this.density = nbt.getDouble("density");
+            this.density = nbt.getFloat("density");
         }
 
         @Override
@@ -253,10 +252,20 @@ public class EditOperations2D {
         }
 
         @Override
-        public void execute(PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
-            ((PhysicsRigidBody) pco).setMass(this.mass);
-            obj.setDensity(this.mass / obj.getSurfaceArea());
-            reAddToUpdate(pco);
+        public void execute(Body body, BodyUserObj obj) {
+            float[] area = {0F};
+            BodyHelper.forEachFixture(
+                    body,
+                    fixture -> area[0] += ShapeHelper.getSurfaceArea2D(fixture.getShape())
+            );
+            float density = this.mass / area[0];
+            BodyHelper.forEachFixture(
+                    body,
+                    fixture -> fixture.setDensity(density)
+            );
+            body.resetMassData();
+            body.setAwake(true);
+            body.setActive(true);
         }
 
         @Override
@@ -297,9 +306,8 @@ public class EditOperations2D {
         }
 
         @Override
-        public void execute(PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
-            pco.setFriction(this.friction);
-            reAddToUpdate(pco);
+        public void execute(Body body, BodyUserObj obj) {
+            body.getFixtureList().setFriction(this.friction);
         }
 
         @Override
@@ -340,9 +348,8 @@ public class EditOperations2D {
         }
 
         @Override
-        public void execute(PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
-            pco.setRestitution(this.restitution);
-            reAddToUpdate(pco);
+        public void execute(Body body, BodyUserObj obj) {
+            body.getFixtureList().setRestitution(this.restitution);
         }
 
         @Override
@@ -386,7 +393,7 @@ public class EditOperations2D {
 //        }
 //
 //        @Override
-//        public void execute(PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
+//        public void execute(Body body, CollisionObjectUserObj2D obj) {
 //
 //        }
 //
@@ -412,23 +419,17 @@ public class EditOperations2D {
 //    }
 
     public static class SetPos extends EditOperationBase {
-        private Vector2f pos;
+        private Vec2 pos;
 
         public SetPos() {}
 
-        public SetPos(Vector2f velocity) { // axis=0 : X, axis=1 : Y
+        public SetPos(Vec2 velocity) { // axis=0 : X, axis=1 : Y
             this.pos = velocity;
         }
 
         @Override
-        public void execute(PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
-            if (pco instanceof PhysicsGhostObject) {
-                ((PhysicsGhostObject) pco).setPhysicsLocation(this.pos.toVec3());
-                reAddToUpdate(pco);
-            } else if (pco instanceof PhysicsRigidBody) {
-                ((PhysicsRigidBody) pco).setPhysicsLocation(this.pos.toVec3());
-                reAddToUpdate(pco);
-            }
+        public void execute(Body body, BodyUserObj obj) {
+            InteractivePhysicsSimulator2D.getInstance().setBodyPosLocal(body, this.pos);
         }
 
         @Override
@@ -449,7 +450,7 @@ public class EditOperations2D {
 
         @Override
         public void deserializeNBT(CompoundNBT nbt) {
-            this.pos = NBTSerializer.vec2FromNBT(nbt.getList("pos", Constants.NBT.TAG_FLOAT));
+            this.pos = NBTSerializer.vec2FromNBT(nbt.getCompound("pos"));
         }
 
         @Override
@@ -468,9 +469,8 @@ public class EditOperations2D {
         }
 
         @Override
-        public void execute(PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
-            ((PhysicsRigidBody) pco).setPhysicsRotation(new Quaternion().fromAngles(0F, 0F, this.rotation));
-            reAddToUpdate(pco);
+        public void execute(Body body, BodyUserObj obj) {
+            body.setTransform(body.getPosition(), this.rotation);
         }
 
         @Override
@@ -501,18 +501,17 @@ public class EditOperations2D {
     }
 
     public static class SetLinearVelocity extends EditOperationBase {
-        private Vector2f velocity;
+        private Vec2 velocity;
 
         public SetLinearVelocity() {}
 
-        public SetLinearVelocity(Vector2f velocity) { // axis=0 : X, axis=1 : Y
+        public SetLinearVelocity(Vec2 velocity) { // axis=0 : X, axis=1 : Y
             this.velocity = velocity;
         }
 
         @Override
-        public void execute(PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
-            ((PhysicsRigidBody) pco).setLinearVelocity(velocity.toVec3());
-            reAddToUpdate(pco);
+        public void execute(Body body, BodyUserObj obj) {
+            body.setLinearVelocity(velocity);
         }
 
         @Override
@@ -533,7 +532,7 @@ public class EditOperations2D {
 
         @Override
         public void deserializeNBT(CompoundNBT nbt) {
-            this.velocity = NBTSerializer.vec2FromNBT(nbt.getList("velocity", Constants.NBT.TAG_FLOAT));
+            this.velocity = NBTSerializer.vec2FromNBT(nbt.getCompound("velocity"));
         }
 
         @Override
@@ -552,9 +551,8 @@ public class EditOperations2D {
         }
 
         @Override
-        public void execute(PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
-            ((PhysicsRigidBody) pco).setAngularVelocity(new Vector3f(0F, 0F, this.velocity));
-            reAddToUpdate(pco);
+        public void execute(Body body, BodyUserObj obj) {
+            body.setAngularVelocity(this.velocity);
         }
 
         @Override
@@ -588,11 +586,9 @@ public class EditOperations2D {
         public StopMovement() {}
 
         @Override
-        public void execute(PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
-            PhysicsRigidBody body = (PhysicsRigidBody) pco;
-            body.setLinearVelocity(Vector3f.ZERO);
-            body.setAngularVelocity(Vector3f.ZERO);
-            reAddToUpdate(pco);
+        public void execute(Body body, BodyUserObj obj) {
+            body.setLinearVelocity(new Vec2(0F, 0F));
+            body.setAngularVelocity(0F);
         }
 
         @Override
@@ -625,9 +621,11 @@ public class EditOperations2D {
         }
 
         @Override
-        public void execute(PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
-            pco.setCollideWithGroups(this.groups);
-            reAddToUpdate(pco);
+        public void execute(Body body, BodyUserObj obj) {
+            body.getFixtureList().getFilterData().maskBits = this.groups;
+            body.getFixtureList().setFilterData(
+                    body.getFixtureList().getFilterData()
+            );
         }
 
         @Override
@@ -667,13 +665,8 @@ public class EditOperations2D {
         }
 
         @Override
-        public void execute(PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
-            if (this.isStatic) {
-                ((PhysicsRigidBody) pco).setMass(0F);
-            } else {
-                ((PhysicsRigidBody) pco).setMass((float) obj.calculateMass());
-            }
-            reAddToUpdate(pco);
+        public void execute(Body body, BodyUserObj obj) {
+            body.setType(BodyType.STATIC);
         }
 
         @Override
@@ -714,8 +707,8 @@ public class EditOperations2D {
 //        }
 //
 //        @Override
-//        public void execute(PhysicsCollisionObject pco, CollisionObjectUserObj2D obj) {
-//            InteractivePhysicsSimulator2D.getInstance().changeZLevel(pco, this.change);
+//        public void execute(Body body, CollisionObjectUserObj2D obj) {
+//            InteractivePhysicsSimulator2D.getInstance().changeZLevel(body, this.change);
 //        }
 //
 //        @Override
