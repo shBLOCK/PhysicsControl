@@ -69,6 +69,9 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
 
     private double currentMouseX = 0, currentMouseY = 0;
 
+    private boolean debugDraw = false;
+    private int lastFrameRenderedBodyCount = 0;
+
     public GuiPhysicsSimulator() {
         super(new StringTextComponent("Physics Simulator"));
 //        this.item = item;
@@ -84,7 +87,11 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
 //        }
 //        new InteractivePhysicsSimulator2D(space);
         new InteractivePhysicsSimulator2D(new World(new Vec2(0F, -9.8F)));
+    }
 
+    @Override
+    protected void init() {
+        super.init();
         try {
             autoLoad();
         } catch (IOException e) {
@@ -209,13 +216,20 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
     }
 
     private void renderSpace(MatrixStack matrixStack, World space) {
+        this.debugDraw = true;
+
         matrixStack.pushPose();
 
 //        matrixStack.mulPose();
         matrixStack.translate(this.globalTranslate.x, this.globalTranslate.y, 0F);
         matrixStack.scale(this.globalScale, this.globalScale, 1F);
 
-        AABB screenBB = new AABB(toSpacePos(0F, 0F), toSpacePos(width, height));
+        Vec2 lower = toSpacePos(0F, 0F);
+        lower.y = -lower.y;
+        Vec2 upper = toSpacePos(width, height);
+        upper.y = -upper.y;
+        AABB screenBB = new AABB(lower, upper);
+        this.lastFrameRenderedBodyCount = 0;
         getSimulator().forEachBody(
                 body -> {
                     AABB aabb = new AABB();
@@ -229,11 +243,23 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                                 }
                             }
                     );
-                    if (AABB.testOverlap(screenBB, aabb) || true) {
+                    aabb.lowerBound.y = -aabb.lowerBound.y;
+                    aabb.upperBound.y = -aabb.upperBound.y;
+                    float tmp = aabb.lowerBound.y;
+                    aabb.lowerBound.y = aabb.upperBound.y;
+                    aabb.upperBound.y = tmp;
+                    if (debugDraw) {
+                        RenderHelper.drawBoxFrame(matrixStack.last().pose(), lower.x, lower.y, upper.x, upper.y, 5, 0, 1, 0, 1);
+                        RenderHelper.drawBoxFrame(matrixStack.last().pose(), aabb.lowerBound.x, aabb.lowerBound.y, aabb.upperBound.x, aabb.upperBound.y, 2, 0, 0, 1, 1);
+                    }
+                    if (AABBHelper.isOverlapping2D(aabb, screenBB)) {
                         ShapeRenderer2D.drawBody(matrixStack, body, getSimulator().isSelected(body));
+                        this.lastFrameRenderedBodyCount++;
                     }
                 }
         );
+
+//        System.out.println(this.lastFrameRenderedBodyCount);
 
         if (this.state == State.DRAW) {
             renderDrawing(matrixStack);
@@ -531,6 +557,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                                     jointDef.collideConnected = true;
 
                                     if (this.toolConfig.dragToolDisableRotation) {
+                                        results.get(0).setAngularVelocity(0F);
                                         results.get(0).setFixedRotation(true);
                                     }
 

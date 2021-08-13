@@ -7,6 +7,7 @@ import com.shblock.physicscontrol.client.gui.GlobalImGuiRenderer;
 import com.shblock.physicscontrol.command.CommandEditBodyProperty;
 import com.shblock.physicscontrol.command.EditOperations2D;
 import com.shblock.physicscontrol.physics.physics.BodyUserObj;
+import com.shblock.physicscontrol.physics.util.NBTSerializer;
 import com.shblock.physicscontrol.physics.util.ShapeHelper;
 import imgui.ImColor;
 import imgui.ImGui;
@@ -144,6 +145,7 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
         this.mainWindowModules.add(new ModuleMovement());
         this.mainWindowModules.add(new ModuleInformation());
         this.mainWindowModules.add(new ModuleCollision());
+        this.mainWindowModules.add(new ModuleMoveDistance());
         this.mainWindowModules.add(new ModulePlot());
     }
 
@@ -177,6 +179,7 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
         register(ModuleMovement.class);
         register(ModuleInformation.class);
         register(ModuleCollision.class);
+        register(ModuleMoveDistance.class);
         register(ModulePlot.class);
     }
 
@@ -187,7 +190,9 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
         nbt.putInt("body_id", this.bodyId);
         ListNBT list = new ListNBT();
         for (Module module : this.modules.values()) {
-            list.add(StringNBT.valueOf(module.getId()));
+            CompoundNBT mn = module.serializeNBT();
+            mn.putString("type", module.getId());
+            list.add(mn);
         }
         nbt.put("modules", list);
         return nbt;
@@ -201,14 +206,25 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
         ListNBT list = nbt.getList("modules", Constants.NBT.TAG_COMPOUND);
         for (int i=0; i<list.size(); i++) {
             int guiId = GuiPhysicsSimulator.tryGetInstance().getNextGuiId();
-            this.modules.put(guiId, moduleFromId(list.getString(i)));
+            CompoundNBT mn = list.getCompound(i);
+            Module module = moduleFromId(mn.getString("type"));
+            module.deserializeNBT(mn);
+            this.modules.put(guiId, module);
         }
     }
 
-    private static abstract class Module {
+    private static abstract class Module implements INBTSerializable<CompoundNBT> {
         public abstract void build(BodyEditGui gui, Body body, BodyUserObj obj);
 
         public abstract String getId();
+
+        @Override
+        public CompoundNBT serializeNBT() {
+            return new CompoundNBT();
+        }
+
+        @Override
+        public void deserializeNBT(CompoundNBT nbt) { }
     }
 
     private static class ModuleTools extends Module {
@@ -427,6 +443,7 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
     }
 
     private static class ModuleInformation extends Module {
+        private static final int FLAGS = ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.NoBordersInBody;
         private static final String PREFIX = "physicscontrol.gui.sim.edit.module.information.";
 
         public ModuleInformation() {}
@@ -451,9 +468,7 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
         public void build(BodyEditGui gui, Body body, BodyUserObj obj) {
             boolean isStatic = body.getType() == BodyType.STATIC;
 
-            int flags = ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.NoBordersInBody;
-
-            if (ImGui.beginTable("table", 2, flags)) {
+            if (ImGui.beginTable("information_table", 2, FLAGS)) {
                 Vec2 value;
 
                 // Surface area
@@ -545,6 +560,61 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
         }
     }
 
+    private static class ModuleMoveDistance extends Module {
+        private static final int FLAGS = ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.NoBordersInBody;
+
+        private Vec2 origin = null;
+
+        public ModuleMoveDistance() {}
+
+        public static void column(String a, String b) {
+            ImGui.tableNextRow();
+            ImGui.tableSetColumnIndex(0);
+            ImGui.text(a);
+            ImGui.tableSetColumnIndex(1);
+            ImGui.text(b);
+        }
+
+        @Override
+        public void build(BodyEditGui gui, Body body, BodyUserObj obj) {
+            Vec2 pos = body.getPosition();
+
+            if (this.origin == null) {
+                this.origin = pos.clone();
+            }
+
+            String numFormat = I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.move_distance.num");
+            if (ImGui.beginTable("move_distance_table", 2, FLAGS)) {
+                column(I18n.get("physicscontrol.gui.sim.edit.module.move_distance.distance"), String.format(numFormat, pos.sub(this.origin).abs().length()));
+                column(I18n.get("physicscontrol.gui.sim.edit.module.move_distance.distance_x"), String.format(numFormat, Math.abs(pos.x - this.origin.x)));
+                column(I18n.get("physicscontrol.gui.sim.edit.module.move_distance.distance_y"), String.format(numFormat, Math.abs(pos.y - this.origin.y)));
+                ImGui.endTable();
+            }
+
+            if (ImGui.button(I18n.get("physicscontrol.gui.sim.edit.module.move_distance.reset"))) {
+                this.origin = pos.clone();
+            }
+        }
+
+        @Override
+        public String getId() {
+            return "move_distance";
+        }
+
+        @Override
+        public CompoundNBT serializeNBT() {
+            CompoundNBT nbt = super.serializeNBT();
+            nbt.put("origin", NBTSerializer.toNBT(this.origin));
+            return nbt;
+        }
+
+        @Override
+        public void deserializeNBT(CompoundNBT nbt) {
+            super.deserializeNBT(nbt);
+            this.origin = NBTSerializer.vec2FromNBT(nbt.getCompound("origin"));
+        }
+    }
+
     private static class ModulePlot extends Module {
         public ModulePlot() {}
 
@@ -555,7 +625,6 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
                 ImPlot.endPlot();
             }
         }
-
 
         @Override
         public String getId() {
