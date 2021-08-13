@@ -75,5 +75,22 @@
   "physicscontrol.gui.sim.tool.config.drag.disable_rotation": "阻止物体旋转",
   "physicscontrol.gui.sim.tool.config.drag.drag_center": "拖拽物体重心",
   "physicscontrol.gui.sim.tool.config.drag.frequency": "频率:",
-  "physicscontrol.gui.sim.tool.config.drag.frequency.num": "&.1f Hz"
+  "physicscontrol.gui.sim.tool.config.drag.frequency.num": "&.1f Hz",
+  "physicscontrol.gui.sim.file.new.tooltip": "新建世界",
+  "physicscontrol.gui.sim.file.new.modal": "确认新建世界",
+  "physicscontrol.gui.sim.file.new.modal.message": "新世界将覆盖当前世界，此操作不能撤销！",
+  "physicscontrol.gui.sim.file.new.modal.yes": "确认",
+  "physicscontrol.gui.sim.file.new.modal.no": "取消",
+  "physicscontrol.gui.sim.file.save.tooltip": "保存世界",
+  "physicscontrol.gui.sim.file.save.name": "文件名",
+  "physicscontrol.gui.sim.file.save.button": "保存",
+  "physicscontrol.gui.sim.file.save.success": "成功保存至文件: %s",
+  "physicscontrol.gui.sim.file.save.error": "保存失败:\n%s",
+  "physicscontrol.gui.sim.file.load.tooltip": "加载世界",
+  "physicscontrol.gui.sim.file.load.button": "加载",
+  "physicscontrol.gui.sim.file.load.success": "加载成功!",
+  "physicscontrol.gui.sim.file.load.error": "加载失败:\n%s",
+  "physicscontrol.gui.sim.file.load.error.did_not_select": "请选择一个文件来加载!",
+  "physicscontrol.gui.sim.file.load.backup.success": "当前世界已被备份至: %s",
+  "physicscontrol.gui.sim.file.load.backup.error": "备份失败:\n%s"
 }

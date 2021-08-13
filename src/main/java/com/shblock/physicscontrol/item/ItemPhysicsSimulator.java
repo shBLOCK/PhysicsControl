@@ -30,7 +30,7 @@ public class ItemPhysicsSimulator extends Item {
     @Override
     public ActionResult<ItemStack> use(World world, PlayerEntity player, Hand hand) {
         if (world.isClientSide()) {
-            DistExecutor.runWhenOn(Dist.CLIENT, () -> () -> GuiClientHandler.openPhysicsSimulatorGui(player.getItemInHand(hand)));
+            DistExecutor.runWhenOn(Dist.CLIENT, () -> GuiClientHandler::openPhysicsSimulatorGui);
         }
         return super.use(world, player, hand);
     }

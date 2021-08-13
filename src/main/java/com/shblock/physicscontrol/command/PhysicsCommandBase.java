@@ -8,15 +8,13 @@ import org.jbox2d.dynamics.World;
 import javax.annotation.Nullable;
 
 public abstract class PhysicsCommandBase extends AbstractCommand {
-    protected CompoundNBT old_space;
+    protected CompoundNBT old_simulator;
 
     public PhysicsCommandBase() {}
 
-    public PhysicsCommandBase(@Nullable World space) {
-        if (space == null) {
-            space = InteractivePhysicsSimulator2D.getInstance().getSpace();
-        }
-        this.old_space = NBTSerializer.toNBT(space);
+    public PhysicsCommandBase(Object dummy) {
+        this.old_simulator = InteractivePhysicsSimulator2D.getInstance().serializeNBT();
+        this.old_simulator.remove("command_history");
     }
 
 //    /**
@@ -29,7 +27,7 @@ public abstract class PhysicsCommandBase extends AbstractCommand {
 
     @Override
     public void undo() {
-        InteractivePhysicsSimulator2D.getInstance().setSpace(NBTSerializer.spaceFromNBT(old_space));
+        InteractivePhysicsSimulator2D.getInstance().deserializeNBT(this.old_simulator);
     }
 
     @Override
@@ -41,12 +39,12 @@ public abstract class PhysicsCommandBase extends AbstractCommand {
     @Override
     public CompoundNBT serializeNBT() {
         CompoundNBT nbt = new CompoundNBT();
-        nbt.put("old_space", this.old_space);
+        nbt.put("old_simulator", this.old_simulator);
         return nbt;
     }
 
     @Override
     public void deserializeNBT(CompoundNBT nbt) {
-        this.old_space = nbt.getCompound("old_space");
+        this.old_simulator = nbt.getCompound("old_simulator");
     }
 }

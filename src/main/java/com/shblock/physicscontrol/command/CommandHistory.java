@@ -1,10 +1,15 @@
 package com.shblock.physicscontrol.command;
 
+import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.ListNBT;
+import net.minecraftforge.common.util.Constants;
+import net.minecraftforge.common.util.INBTSerializable;
+
 import java.util.ArrayList;
 import java.util.List;
 
 // https://www.youtube.com/watch?v=vqRHjhaECv4
-public class CommandHistory {
+public class CommandHistory implements INBTSerializable<CompoundNBT> {
     private int MAX_HISTORY = 64;
     private List<AbstractCommand> history = new ArrayList<>();
     private int pointer = -1; //index of current command in the history list
@@ -79,5 +84,29 @@ public class CommandHistory {
 
     public void setPointer(int pointer) {
         this.pointer = pointer;
+    }
+
+    @Override
+    public CompoundNBT serializeNBT() {
+        CompoundNBT nbt = new CompoundNBT();
+        nbt.putInt("max_history", this.MAX_HISTORY);
+        nbt.putInt("pointer", this.pointer);
+        ListNBT commands = new ListNBT();
+        for (AbstractCommand cmd : this.history) {
+            commands.add(CommandSerializer.toNBT(cmd));
+        }
+        nbt.put("history", commands);
+        return nbt;
+    }
+
+    @Override
+    public void deserializeNBT(CompoundNBT nbt) {
+        this.MAX_HISTORY = nbt.getInt("max_history");
+        this.pointer = nbt.getInt("pointer");
+        this.history.clear();
+        ListNBT commands = nbt.getList("history", Constants.NBT.TAG_COMPOUND);
+        for (int i=0; i<commands.size(); i++) {
+            this.history.add(CommandSerializer.fromNBT(commands.getCompound(i)));
+        }
     }
 }

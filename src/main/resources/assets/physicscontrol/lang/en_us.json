@@ -75,5 +75,22 @@
   "physicscontrol.gui.sim.tool.config.drag.disable_rotation": "Disable Rotation",
   "physicscontrol.gui.sim.tool.config.drag.drag_center": "Drag Center",
   "physicscontrol.gui.sim.tool.config.drag.frequency": "Frequency:",
-  "physicscontrol.gui.sim.tool.config.drag.frequency.num": "&.1f Hz"
+  "physicscontrol.gui.sim.tool.config.drag.frequency.num": "&.1f Hz",
+  "physicscontrol.gui.sim.file.new.tooltip": "New world",
+  "physicscontrol.gui.sim.file.new.modal": "New?",
+  "physicscontrol.gui.sim.file.new.modal.message": "The new world will override the current world, it can't be undone!",
+  "physicscontrol.gui.sim.file.new.modal.yes": "OK",
+  "physicscontrol.gui.sim.file.new.modal.no": "Cancel",
+  "physicscontrol.gui.sim.file.save.tooltip": "Save world",
+  "physicscontrol.gui.sim.file.save.name": "Name",
+  "physicscontrol.gui.sim.file.save.button": "Save",
+  "physicscontrol.gui.sim.file.save.success": "Successfully saved to file: %s",
+  "physicscontrol.gui.sim.file.save.error": "Failed to save to file:\n%s",
+  "physicscontrol.gui.sim.file.load.tooltip": "Load world",
+  "physicscontrol.gui.sim.file.load.button": "Load",
+  "physicscontrol.gui.sim.file.load.success": "Load success!",
+  "physicscontrol.gui.sim.file.load.error": "Failed to load from file:\n%s",
+  "physicscontrol.gui.sim.file.load.error.did_not_select": "Please select a file to load!",
+  "physicscontrol.gui.sim.file.load.backup.success": "The current world is stored to: %s",
+  "physicscontrol.gui.sim.file.load.backup.error": "Failed to backup current world:\n%s"
 }

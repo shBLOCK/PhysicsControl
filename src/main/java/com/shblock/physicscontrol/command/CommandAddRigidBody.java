@@ -8,6 +8,7 @@ import net.minecraft.client.resources.I18n;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.INBT;
 import net.minecraft.nbt.ListNBT;
+import net.minecraftforge.common.util.Constants;
 import org.jbox2d.collision.shapes.Shape;
 import org.jbox2d.dynamics.Body;
 import org.jbox2d.dynamics.BodyDef;
@@ -71,12 +72,17 @@ public class CommandAddRigidBody extends PhysicsCommandBase {
     }
 
     @Override
-    public CompoundNBT serializeNBT() { //TODO
-        return super.serializeNBT();
+    public CompoundNBT serializeNBT() {
+        CompoundNBT nbt = super.serializeNBT();
+        nbt.put("body", this.body);
+        nbt.put("fixtures", this.fixtures);
+        return nbt;
     }
 
     @Override
     public void deserializeNBT(CompoundNBT nbt) {
         super.deserializeNBT(nbt);
+        this.body = nbt.getCompound("body");
+        this.fixtures = nbt.getList("fixtures", Constants.NBT.TAG_COMPOUND);
     }
 }

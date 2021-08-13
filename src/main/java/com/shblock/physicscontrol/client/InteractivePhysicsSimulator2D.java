@@ -5,7 +5,10 @@ import com.shblock.physicscontrol.PhysicsControl;
 import com.shblock.physicscontrol.command.*;
 import com.shblock.physicscontrol.physics.physics.BodyUserObj;
 import com.shblock.physicscontrol.physics.util.BodyHelper;
+import com.shblock.physicscontrol.physics.util.NBTSerializer;
 import net.minecraft.client.resources.I18n;
+import net.minecraft.nbt.CompoundNBT;
+import net.minecraftforge.common.util.INBTSerializable;
 import org.apache.logging.log4j.Level;
 import org.jbox2d.collision.Collision;
 import org.jbox2d.collision.shapes.Shape;
@@ -15,12 +18,13 @@ import org.jbox2d.dynamics.*;
 import java.util.*;
 import java.util.function.Consumer;
 
-public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of space
+public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundNBT> { //TODO: serialize this instead of space
     private static InteractivePhysicsSimulator2D currentInstance;
 
     private World space;
     private int currentId = -1;
     private boolean simulationRunning;
+
     public enum StepModes {
         TICK, //step the simulation every tick (1/20 sec)
         FRAME //step the simulation every frame
@@ -346,5 +350,53 @@ public class InteractivePhysicsSimulator2D { //TODO: serialize this instead of s
 
     public BodyUserObj getNextUserObj(String name) {
         return new BodyUserObj(InteractivePhysicsSimulator2D.getInstance().nextId(), name);
+    }
+
+    @Override
+    public CompoundNBT serializeNBT() {
+        CompoundNBT nbt = new CompoundNBT();
+        nbt.put("space", NBTSerializer.toNBT(this.space));
+        nbt.putInt("current_id", this.currentId);
+        nbt.putInt("step_mode", this.stepMode.ordinal());
+        nbt.putInt("velocity_iterations", this.velocityIterations);
+        nbt.putInt("position_iterations", this.positionIterations);
+        nbt.putFloat("simulation_speed", this.simulationSpeed);
+        nbt.putFloat("single_step_length", this.singleStepLength);
+        nbt.put("command_history", this.commandHistory.serializeNBT());
+        int[] selected = new int[this.selectedObjects.size()];
+        for (int i=0; i<this.selectedObjects.size(); i++) {
+            selected[i] = ((BodyUserObj) this.selectedObjects.get(i).getUserData()).getId();
+        }
+        nbt.putIntArray("selected_objects", selected);
+        return nbt;
+    }
+
+    @Override
+    public void deserializeNBT(CompoundNBT nbt) {
+        this.space = NBTSerializer.spaceFromNBT(nbt.getCompound("space"));
+        this.currentId = nbt.getInt("current_id");
+        this.simulationRunning = false;
+        this.stepMode = StepModes.values()[nbt.getInt("step_mode")];
+        this.velocityIterations = nbt.getInt("velocity_iterations");
+        this.positionIterations = nbt.getInt("position_iterations");
+        this.simulationSpeed = nbt.getFloat("simulation_speed");
+        this.singleStepLength = nbt.getFloat("single_step_length");
+        if (nbt.contains("command_history")) {
+            this.commandHistory.deserializeNBT(nbt.getCompound("command_history"));
+        }
+
+        this.idBodyMap.clear();
+        Body body = this.space.getBodyList();
+        while (body != null) {
+            if (body.getUserData() instanceof BodyUserObj) {
+                this.idBodyMap.put(((BodyUserObj) body.getUserData()).getId(), body);
+            }
+            body = body.getNext();
+        }
+
+        this.selectedObjects.clear();
+        for (int id : nbt.getIntArray("selected_objects")) {
+            this.selectedObjects.add(getBodyFromId(id));
+        }
     }
 }

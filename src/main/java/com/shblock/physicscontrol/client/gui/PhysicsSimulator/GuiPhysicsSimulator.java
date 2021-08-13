@@ -1,6 +1,7 @@
 package com.shblock.physicscontrol.client.gui.PhysicsSimulator;
 
 import com.mojang.blaze3d.matrix.MatrixStack;
+import com.shblock.physicscontrol.PhysicsControl;
 import com.shblock.physicscontrol.client.I18nHelper;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
 import com.shblock.physicscontrol.client.gui.GlobalImGuiRenderer;
@@ -15,9 +16,13 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.ListNBT;
 import net.minecraft.util.ColorHelper;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.text.StringTextComponent;
+import net.minecraftforge.common.util.Constants;
+import net.minecraftforge.common.util.INBTSerializable;
+import org.apache.logging.log4j.Level;
 import org.jbox2d.collision.AABB;
 import org.jbox2d.collision.shapes.CircleShape;
 import org.jbox2d.collision.shapes.PolygonShape;
@@ -30,6 +35,8 @@ import org.jbox2d.dynamics.joints.MouseJointDef;
 
 import javax.annotation.Nullable;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -37,10 +44,8 @@ import java.util.stream.Collectors;
 
 import static org.lwjgl.glfw.GLFW.*;
 
-public class GuiPhysicsSimulator extends ImGuiBase {
-    private final ItemStack item;
-
-    private static final float MAX_SCALE = 100000F;
+public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<CompoundNBT> {
+    private static final float MAX_SCALE = 1E6F;
     private static final float MIN_SCALE = 0.1F;
     private static final int ANGLE_STEP = 6;
     private static final double PER_STEP = Math.PI / ANGLE_STEP;
@@ -64,21 +69,72 @@ public class GuiPhysicsSimulator extends ImGuiBase {
 
     private double currentMouseX = 0, currentMouseY = 0;
 
-    public GuiPhysicsSimulator(@Nullable ItemStack item) {
+    public GuiPhysicsSimulator() {
         super(new StringTextComponent("Physics Simulator"));
-        this.item = item;
-        CompoundNBT nbt = null;
-        if (this.item != null) {
-            nbt = item.getTagElement("space");
+//        this.item = item;
+//        CompoundNBT nbt = null;
+//        if (this.item != null) {
+//            nbt = item.getTagElement("space");
+//        }
+//        World space;
+//        if (nbt != null) {
+//            space = NBTSerializer.spaceFromNBT(nbt);
+//        } else {
+//            space = new World(new Vec2(0F, -9.8F));
+//        }
+//        new InteractivePhysicsSimulator2D(space);
+        new InteractivePhysicsSimulator2D(new World(new Vec2(0F, -9.8F)));
+
+        try {
+            autoLoad();
+        } catch (IOException e) {
+            PhysicsControl.log(Level.WARN, "Autoload failed!");
+            e.printStackTrace();
         }
-        World space;
-        if (nbt != null) {
-            space = NBTSerializer.spaceFromNBT(nbt);
-        } else {
-            space = new World(new Vec2(0F, -9.8F));
-        }
-        new InteractivePhysicsSimulator2D(space);
     }
+
+    public void newSpace() {
+        globalScale = 100F;
+        scaleSpeed = 0.05F;
+        globalTranslate = new Vec2(0F, 0F);
+
+        state = State.NONE;
+        drawingShape = null;
+        currentTool = Tools.DRAW_CIRCLE;
+        drawPoints.clear();
+
+        draggingJoint = null;
+
+        toolConfig = new ToolConfig();
+        toolEditGui = null;
+
+        currentGuiId = "gui".hashCode();
+        bodyEditGuis.clear();
+
+        getSimulator().close();
+        new InteractivePhysicsSimulator2D(new World(new Vec2(0F, -9.8F)));
+    }
+
+    public File saveToFile(String name) throws IOException {
+        return SaveHelper.saveNBTFile(serializeNBT(), name);
+    }
+
+    public void loadFromFile(String name) throws IOException {
+        deserializeNBT(SaveHelper.readNBTFile(name));
+    }
+
+    public File autoSave() throws IOException {
+        return SaveHelper.saveNBTFile(serializeNBT(), SaveHelper.AUTOSAVE_FILENAME);
+    }
+
+    public boolean autoLoad() throws IOException {
+        if (SaveHelper.contains(SaveHelper.AUTOSAVE_FILENAME)) {
+            deserializeNBT(SaveHelper.readNBTFile(SaveHelper.AUTOSAVE_FILENAME));
+            return true;
+        }
+        return false;
+    }
+
     private static InteractivePhysicsSimulator2D getSimulator() {
         return InteractivePhysicsSimulator2D.getInstance();
     }
@@ -92,6 +148,12 @@ public class GuiPhysicsSimulator extends ImGuiBase {
 
     @Override
     public void onClose() {
+        try {
+            autoSave();
+        } catch (IOException e) {
+            PhysicsControl.log("Autosave failed!");
+            e.printStackTrace();
+        }
         super.onClose();
         getSimulator().close();
     }
@@ -110,6 +172,8 @@ public class GuiPhysicsSimulator extends ImGuiBase {
         if (this.toolEditGui == null && newGui != null) {
             this.toolEditGui = newGui;
         }
+
+        ImGuiBuilder.buildFileUI();
 
         if (this.state == State.DRAW) {
             buildImGuiDrawing();
@@ -806,6 +870,48 @@ public class GuiPhysicsSimulator extends ImGuiBase {
     @Override
     public boolean shouldCloseOnEsc() {
         return false;
+    }
+
+    @Override
+    public CompoundNBT serializeNBT() {
+        CompoundNBT nbt = new CompoundNBT();
+        nbt.putFloat("global_scale", this.globalScale);
+        nbt.putFloat("scale_speed", this.scaleSpeed);
+        nbt.put("global_translate", NBTSerializer.toNBT(this.globalTranslate));
+        nbt.putInt("current_tool", this.currentTool.ordinal());
+        nbt.put("tool_config", this.toolConfig.serializeNBT());
+
+        ListNBT guiList = new ListNBT();
+        for (BodyEditGui gui : this.bodyEditGuis) {
+            guiList.add(gui.serializeNBT());
+        }
+        nbt.put("body_edit_guis", guiList);
+
+        nbt.put("simulator", getSimulator().serializeNBT());
+
+        return nbt;
+    }
+
+    @Override
+    public void deserializeNBT(CompoundNBT nbt) {
+        this.globalScale = nbt.getFloat("global_scale");
+        this.scaleSpeed = nbt.getFloat("scale_speed");
+        this.globalTranslate = NBTSerializer.vec2FromNBT(nbt.getCompound("global_translate"));
+        this.state = State.NONE;
+        this.drawingShape = null;
+        this.currentTool = Tools.values()[nbt.getInt("current_tool")];
+        this.toolEditGui = null;
+        this.currentGuiId = "gui".hashCode();
+
+        this.bodyEditGuis.clear();
+        ListNBT guiList = nbt.getList("body_edit_guis", Constants.NBT.TAG_COMPOUND);
+        for (int i=0; i<guiList.size(); i++) {
+            BodyEditGui gui = new BodyEditGui(0);
+            gui.deserializeNBT(guiList.getCompound(i));
+            this.bodyEditGuis.add(gui);
+        }
+
+        getSimulator().deserializeNBT(nbt.getCompound("simulator"));
     }
 }
 

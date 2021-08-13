@@ -7,19 +7,22 @@ import com.shblock.physicscontrol.client.gui.GlobalImGuiRenderer;
 import com.shblock.physicscontrol.command.CommandEditBodyProperty;
 import com.shblock.physicscontrol.command.EditOperations2D;
 import com.shblock.physicscontrol.physics.physics.BodyUserObj;
-import com.shblock.physicscontrol.physics.util.QuaternionUtil;
 import com.shblock.physicscontrol.physics.util.ShapeHelper;
 import imgui.ImColor;
 import imgui.ImGui;
 import imgui.extension.implot.ImPlot;
 import imgui.flag.*;
 import imgui.type.ImBoolean;
-import imgui.type.ImDouble;
 import imgui.type.ImFloat;
 import imgui.type.ImString;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.I18n;
+import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.ListNBT;
+import net.minecraft.nbt.StringNBT;
 import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.common.util.Constants;
+import net.minecraftforge.common.util.INBTSerializable;
 import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.Body;
 import org.jbox2d.dynamics.BodyType;
@@ -29,13 +32,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class BodyEditGui {
+public class BodyEditGui implements INBTSerializable<CompoundNBT> {
+    private static final Map<String, Class<? extends Module>> moduleRegistry = new HashMap<>();
+
     private static final int ICON = Minecraft.getInstance().getTextureManager().getTexture(new ResourceLocation(PhysicsControl.MODID, "icons")).getId();
     private static final int GLOBAL_INPUT_FLAG = ImGuiInputTextFlags.NoUndoRedo | ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.CallbackResize;
 
     private boolean moveToMouse = true;
     private boolean displayMainWindow = true;
-    private int bodyId; //TODO: improve performance? (don't search for the id every time)
+    private int bodyId;
 
     private List<Module> mainWindowModules = new ArrayList<>();
     private Map<Integer, Module> modules = new HashMap<>();
@@ -142,9 +147,65 @@ public class BodyEditGui {
         this.mainWindowModules.add(new ModulePlot());
     }
 
+    public int getbodyId() {
+        return bodyId;
+    }
+
+    public static void register(Class<? extends Module> clz) {
+        try {
+            moduleRegistry.put(clz.newInstance().getId(), clz);
+        } catch (InstantiationException | IllegalAccessException e) {
+            e.printStackTrace();
+            assert false;
+        }
+    }
+
+    private static Module moduleFromId(String id) {
+        try {
+            return moduleRegistry.get(id).newInstance();
+        } catch (InstantiationException | IllegalAccessException e) {
+            e.printStackTrace();
+            assert false;
+        }
+        return null;
+    }
+
+    public static void init() {
+        register(ModuleTools.class);
+        register(ModuleAppearance.class);
+        register(ModuleMaterial.class);
+        register(ModuleMovement.class);
+        register(ModuleInformation.class);
+        register(ModuleCollision.class);
+        register(ModulePlot.class);
+    }
+
+    @Override
+    public CompoundNBT serializeNBT() {
+        CompoundNBT nbt = new CompoundNBT();
+        nbt.putBoolean("display_main_window", this.displayMainWindow);
+        nbt.putInt("body_id", this.bodyId);
+        ListNBT list = new ListNBT();
+        for (Module module : this.modules.values()) {
+            list.add(StringNBT.valueOf(module.getId()));
+        }
+        nbt.put("modules", list);
+        return nbt;
+    }
+
+    @Override
+    public void deserializeNBT(CompoundNBT nbt) {
+        this.displayMainWindow = nbt.getBoolean("display_main_window");
+        this.bodyId = nbt.getInt("body_id");
+        this.modules.clear();
+        ListNBT list = nbt.getList("modules", Constants.NBT.TAG_COMPOUND);
+        for (int i=0; i<list.size(); i++) {
+            int guiId = GuiPhysicsSimulator.tryGetInstance().getNextGuiId();
+            this.modules.put(guiId, moduleFromId(list.getString(i)));
+        }
+    }
+
     private static abstract class Module {
-
-
         public abstract void build(BodyEditGui gui, Body body, BodyUserObj obj);
 
         public abstract String getId();
@@ -430,7 +491,6 @@ public class BodyEditGui {
             }
         }
 
-
         @Override
         public String getId() {
             return "information";
@@ -501,9 +561,5 @@ public class BodyEditGui {
         public String getId() {
             return "plot";
         }
-    }
-
-    public int getbodyId() {
-        return bodyId;
     }
 }

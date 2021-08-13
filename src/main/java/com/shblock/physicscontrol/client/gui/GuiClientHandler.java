@@ -7,7 +7,7 @@ import net.minecraft.item.ItemStack;
 import javax.annotation.Nullable;
 
 public class GuiClientHandler {
-    public static void openPhysicsSimulatorGui(@Nullable ItemStack item) {
-        Minecraft.getInstance().setScreen(new GuiPhysicsSimulator(item));
+    public static void openPhysicsSimulatorGui() {
+        Minecraft.getInstance().setScreen(new GuiPhysicsSimulator());
     }
 }
