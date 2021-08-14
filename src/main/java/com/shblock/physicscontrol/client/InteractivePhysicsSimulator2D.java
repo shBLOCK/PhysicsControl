@@ -154,19 +154,29 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
         executeCommand(new CommandChangeZLevel(change, this.selectedObjects));
     }
 
+    public void freezeBody(Body body) {
+        body.setGravityScale(0F);
+        body.setLinearVelocity(new Vec2(0F, 0F));
+        body.setAngularVelocity(0F);
+        body.setFixedRotation(true);
+    }
+
     public void startMove() {
         for (Body body : this.selectedObjects) {
-            body.setGravityScale(0F);
-            body.setLinearVelocity(new Vec2(0F, 0F));
-            body.setAngularVelocity(0F);
+            freezeBody(body);
         }
+    }
+
+    public void unfreezeBody(Body body) {
+        body.setGravityScale(1F);
+        body.setAwake(true);
+        body.setActive(true);
+        body.setFixedRotation(false);
     }
 
     public void stopMove() {
         for (Body body : this.selectedObjects) {
-            body.setGravityScale(1F);
-            body.setAwake(true);
-            body.setActive(true);
+            unfreezeBody(body);
         }
     }
 

@@ -50,5 +50,7 @@ public class CommandSerializer {
         register(CommandSingleStep.class);
         register(CommandDeleteBodies.class);
         register(CommandEditBodyProperty.class);
+        register(CommandDragBody.class);
+        register(CommandRotateBody.class);
     }
 }

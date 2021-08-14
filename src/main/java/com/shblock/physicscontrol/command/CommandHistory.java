@@ -47,7 +47,9 @@ public class CommandHistory implements INBTSerializable<CompoundNBT> {
             return null;
         }
         AbstractCommand command = history.get(pointer);
-        command.undo();
+        if (command.undo()) {
+            return null;
+        }
         pointer--;
         return command;
     }

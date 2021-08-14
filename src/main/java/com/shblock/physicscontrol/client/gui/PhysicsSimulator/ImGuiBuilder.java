@@ -15,7 +15,6 @@ import net.minecraft.util.ResourceLocation;
 import org.apache.logging.log4j.Level;
 
 import java.io.File;
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -43,7 +42,9 @@ class ImGuiBuilder {
             int i = tool.ordinal();
 
             if (tool.group != last_group) {
-                ImGui.separator();
+                if (tool != Tools.values()[0]) {
+                    ImGui.separator();
+                }
             }
 
             ImGui.pushID(i);
@@ -227,7 +228,7 @@ class ImGuiBuilder {
                     try {
                         GuiPhysicsSimulator.tryGetInstance().loadFromFile(files[selectedFile.get()]);
                         filePromptMessage = I18n.get("physicscontrol.gui.sim.file.load.success");
-                    } catch (Exception e) {
+                    } catch (Exception | AssertionError e) {
                         PhysicsControl.log(Level.WARN, "Failed to load space!");
                         e.printStackTrace();
                         filePromptMessage = null;

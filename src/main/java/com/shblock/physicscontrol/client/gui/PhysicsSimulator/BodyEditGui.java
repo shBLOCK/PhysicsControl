@@ -203,14 +203,14 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
         this.displayMainWindow = nbt.getBoolean("display_main_window");
         this.bodyId = nbt.getInt("body_id");
         this.modules.clear();
-        ListNBT list = nbt.getList("modules", Constants.NBT.TAG_COMPOUND);
-        for (int i=0; i<list.size(); i++) {
-            int guiId = GuiPhysicsSimulator.tryGetInstance().getNextGuiId();
-            CompoundNBT mn = list.getCompound(i);
-            Module module = moduleFromId(mn.getString("type"));
-            module.deserializeNBT(mn);
-            this.modules.put(guiId, module);
-        }
+//        ListNBT list = nbt.getList("modules", Constants.NBT.TAG_COMPOUND);
+//        for (int i=0; i<list.size(); i++) {
+//            int guiId = GuiPhysicsSimulator.tryGetInstance().getNextGuiId();
+//            CompoundNBT mn = list.getCompound(i);
+//            Module module = moduleFromId(mn.getString("type"));
+//            module.deserializeNBT(mn);
+//            this.modules.put(guiId, module);
+//        }
     }
 
     private static abstract class Module implements INBTSerializable<CompoundNBT> {

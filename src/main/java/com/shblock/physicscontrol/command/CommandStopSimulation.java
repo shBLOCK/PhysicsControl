@@ -12,8 +12,8 @@ public class CommandStopSimulation extends AbstractCommand {
     }
 
     @Override
-    public void undo() {
-
+    public boolean undo() {
+        return true;
     }
 
     @Override

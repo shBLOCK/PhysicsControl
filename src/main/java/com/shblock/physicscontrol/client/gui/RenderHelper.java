@@ -34,6 +34,45 @@ public class RenderHelper {
         RenderSystem.enableTexture();
     }
 
+    public static void drawSector(Matrix4f matrix, float radius, float size, float r, float g, float b, float a) {
+        RenderSystem.disableTexture();
+        RenderSystem.disableCull();
+
+        Tessellator tessellator = Tessellator.getInstance();
+        BufferBuilder builder = tessellator.getBuilder();
+        builder.begin(GL11.GL_POLYGON, DefaultVertexFormats.POSITION_COLOR);
+        builder.vertex(matrix, 0F, 0F, 0F).color(r, g, b, a).endVertex();
+        if (size > 0) {
+            for (int i = 0; i < CIRCLE_SIDES * size; i++) {
+                builder.vertex(matrix,
+                        (float) Math.sin(Math.PI * ((float) i / CIRCLE_SIDES) * 2F) * radius,
+                        (float) Math.cos(Math.PI * ((float) i / CIRCLE_SIDES) * 2F) * radius,
+                        0F)
+                        .color(r, g, b, a)
+                        .endVertex();
+            }
+        } else {
+            for (int i = CIRCLE_SIDES; i > CIRCLE_SIDES * (1 + size); i--) {
+                builder.vertex(matrix,
+                        (float) Math.sin(Math.PI * ((float) i / CIRCLE_SIDES) * 2F) * radius,
+                        (float) Math.cos(Math.PI * ((float) i / CIRCLE_SIDES) * 2F) * radius,
+                        0F)
+                        .color(r, g, b, a)
+                        .endVertex();
+            }
+        }
+        builder.vertex(matrix,
+                (float) Math.sin(Math.PI * size * 2F) * radius,
+                (float) Math.cos(Math.PI * size * 2F) * radius,
+                0F)
+                .color(r, g, b, a)
+                .endVertex();
+        tessellator.end();
+
+        RenderSystem.enableTexture();
+        RenderSystem.enableCull();
+    }
+
     public static void drawCircleDirection(Matrix4f matrix, float radius, float r, float g, float b, float a) {
         RenderSystem.disableTexture();
 

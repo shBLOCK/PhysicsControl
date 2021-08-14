@@ -26,8 +26,9 @@ public abstract class PhysicsCommandBase extends AbstractCommand {
 //    }
 
     @Override
-    public void undo() {
+    public boolean undo() {
         InteractivePhysicsSimulator2D.getInstance().deserializeNBT(this.old_simulator);
+        return true;
     }
 
     @Override

@@ -8,6 +8,8 @@ import com.shblock.physicscontrol.client.gui.GlobalImGuiRenderer;
 import com.shblock.physicscontrol.client.gui.ImGuiBase;
 import com.shblock.physicscontrol.client.gui.RenderHelper;
 import com.shblock.physicscontrol.command.CommandAddRigidBody;
+import com.shblock.physicscontrol.command.CommandDragBody;
+import com.shblock.physicscontrol.command.CommandRotateBody;
 import com.shblock.physicscontrol.command.CommandSingleStep;
 import com.shblock.physicscontrol.physics.physics.BodyUserObj;
 import com.shblock.physicscontrol.physics.util.*;
@@ -19,6 +21,7 @@ import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
 import net.minecraft.util.ColorHelper;
 import net.minecraft.util.math.vector.Matrix4f;
+import net.minecraft.util.math.vector.Quaternion;
 import net.minecraft.util.text.StringTextComponent;
 import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.common.util.INBTSerializable;
@@ -60,6 +63,9 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
     private final List<Vec2> drawPoints = new ArrayList<>();
 
     private MouseJoint draggingJoint = null;
+    private Body rotatingBody = null;
+    private float bodyOrgRotation = 0F;
+    private float mouseOrgRotation = 0F;
 
     private ToolConfig toolConfig = new ToolConfig();
     private ToolEditGui toolEditGui;
@@ -94,7 +100,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
         super.init();
         try {
             autoLoad();
-        } catch (IOException e) {
+        } catch (Exception | AssertionError e) {
             PhysicsControl.log(Level.WARN, "Autoload failed!");
             e.printStackTrace();
         }
@@ -182,8 +188,13 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
 
         ImGuiBuilder.buildFileUI();
 
-        if (this.state == State.DRAW) {
-            buildImGuiDrawing();
+        switch (this.state) {
+            case DRAW:
+                buildImGuiDrawing();
+                break;
+            case ROTATE:
+                buildImGuiRotating();
+                break;
         }
 
         for (int i=0; i<this.bodyEditGuis.size(); i++) {
@@ -216,7 +227,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
     }
 
     private void renderSpace(MatrixStack matrixStack, World space) {
-        this.debugDraw = true;
+        this.debugDraw = false;
 
         matrixStack.pushPose();
 
@@ -261,12 +272,16 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
 
 //        System.out.println(this.lastFrameRenderedBodyCount);
 
-        if (this.state == State.DRAW) {
-            renderDrawing(matrixStack);
-        }
-
-        if (this.state == State.DRAG) {
-            renderDrag(matrixStack);
+        switch (this.state) {
+            case DRAW:
+                renderDrawing(matrixStack);
+                break;
+            case DRAG:
+                renderDrag(matrixStack);
+                break;
+            case ROTATE:
+                renderRotating(matrixStack);
+                break;
         }
 
         matrixStack.popPose();
@@ -297,14 +312,9 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                 start = this.drawPoints.get(0).clone();
                 end = this.drawPoints.get(1).clone();
                 matrixStack.translate(start.x, -start.y, 0F);
-                double angle = MyVec2.angle(end.sub(start), new Vec2(0F, 1F));
+                double angle = calculateRotation(start, end);
                 if (hasShiftDown()) {
-                    double step = angle / PER_STEP;
-                    int steps = (int) Math.round(step);
-                    angle = PER_STEP * steps;
-                }
-                if (end.sub(start).x < 0F) {
-                    angle = -angle;
+                    angle = stepAngle(angle);
                 }
                 matrixStack.mulPose(
                         new net.minecraft.util.math.vector.Quaternion(0F, 0F, (float) angle, false)
@@ -345,6 +355,41 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
         matrixStack.popPose();
     }
 
+    private void renderRotating(MatrixStack matrixStack) {
+        matrixStack.pushPose();
+
+        Vec2 center = this.rotatingBody.getPosition().clone();
+        Vec2 edge = toSpacePos(currentMouseX, currentMouseY);
+        float radius = edge.sub(center).length();
+        float angle = (float) calculateRotation(center, edge);
+
+        matrixStack.translate(center.x, -center.y, 0F);
+        matrixStack.mulPose(new Quaternion(0F, 0F, (float) (this.mouseOrgRotation + Math.PI), false));
+        Matrix4f matrix = matrixStack.last().pose();
+        float delta = angle - this.mouseOrgRotation;
+        if (hasShiftDown()) {
+            delta = (float) stepAngle(delta);
+        }
+        float sectorSize = (float) (delta / Math.PI / 2F);
+        if (sectorSize > 0.5F) {
+            sectorSize--;
+        }
+        if (sectorSize < -0.5F) {
+            sectorSize++;
+        }
+        RenderHelper.drawSector(matrix, radius, -sectorSize, 1F, 1F, 1F, 0.5F);
+        RenderHelper.drawLine(matrix, new Vec2(0F, 0F), new Vec2(0F, radius), 2, 0, 1, 0, 1);
+
+//        float a = (float) (angle + Math.PI);
+//        if (hasShiftDown()) {
+//            a = (float) stepAngle(a);
+//        }
+        matrixStack.mulPose(new Quaternion(0F, 0F, (float) (sectorSize * Math.PI * 2), false));
+        matrix = matrixStack.last().pose();
+        RenderHelper.drawLine(matrix, new Vec2(0F, 0F), new Vec2(0F, radius), 2, 1, 0, 0, 1);
+        matrixStack.popPose();
+    }
+
     private void buildImGuiDrawing() {
         switch (this.drawingShape) {
             case CIRCLE:
@@ -352,7 +397,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                 Vec2 end = this.drawPoints.get(1).clone();
                 float radius = start.sub(end).length();
                 ImGui.beginTooltip();
-                ImGui.text(I18n.get("physicscontrol.gui.sim.tooltip.radius", radius));
+                ImGui.text(String.format(I18nHelper.localizeNumFormat("physicscontrol.gui.sim.tooltip.radius"), radius));
 
                 double angle = MyVec2.angle(end.sub(start), new Vec2(0F, 1F));
                 if (hasShiftDown()) {
@@ -363,7 +408,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                 if (end.sub(start).x < 0F) {
                     angle = -angle;
                 }
-                ImGui.text(I18n.get("physicscontrol.gui.sim.tooltip.angle", Math.toDegrees(angle)));
+                ImGui.text(String.format(I18nHelper.localizeNumFormat("physicscontrol.gui.sim.tooltip.angle"), Math.toDegrees(angle)));
 
                 ImGui.endTooltip();
                 return;
@@ -377,12 +422,30 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                 Vec2 offset = end.sub(start);
 
                 ImGui.beginTooltip();
-                ImGui.text(I18n.get("physicscontrol.gui.sim.tooltip.width", Math.abs(offset.x)));
-                ImGui.text(I18n.get("physicscontrol.gui.sim.tooltip.height", Math.abs(offset.y)));
+                ImGui.text(String.format(I18nHelper.localizeNumFormat("physicscontrol.gui.sim.tooltip.width"), Math.abs(offset.x)));
+                ImGui.text(String.format(I18nHelper.localizeNumFormat("physicscontrol.gui.sim.tooltip.height"), Math.abs(offset.y)));
                 ImGui.endTooltip();
                 return;
             case POLYGON:
         }
+    }
+
+    private void buildImGuiRotating() {
+        Vec2 center = this.rotatingBody.getPosition().clone();
+        Vec2 edge = toSpacePos(currentMouseX, currentMouseY);
+        float angle = (float) calculateRotation(center, edge);
+        float delta = angle - this.mouseOrgRotation;
+        if (hasShiftDown()) {
+            delta = (float) stepAngle(delta);
+        }
+        float sectorSize = (float) (delta / Math.PI / 2F);
+        if (sectorSize > 0.5F) {
+            sectorSize--;
+        }
+        if (sectorSize < -0.5F) {
+            sectorSize++;
+        }
+        ImGui.setTooltip(String.format(I18nHelper.localizeNumFormat("physicscontrol.gui.sim.tooltip.rotate_body"), Math.abs(Math.toDegrees(sectorSize * Math.PI * 2))));
     }
 
     private void drawScaleMeasure(MatrixStack matrixStack) {
@@ -455,6 +518,23 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
         return this.toScreenPos(vec.x, vec.y);
     }
 
+    private double calculateRotation(Vec2 center, Vec2 edge) {
+        double angle = MyVec2.angle(edge.sub(center), new Vec2(0F, 1F));
+        if (edge.sub(center).x < 0F) {
+            angle = -angle;
+        }
+        return angle;
+    }
+
+    private double stepAngle(double angle) {
+        if (hasShiftDown()) {
+            double step = angle / PER_STEP;
+            int steps = (int) Math.round(step);
+            angle = PER_STEP * steps;
+        }
+        return angle;
+    }
+
     @Override
     public void mouseMoved(double mouseX, double mouseY) {
         if (GlobalImGuiRenderer.io.getWantCaptureMouse()) {
@@ -499,6 +579,17 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                 case DRAG:
                     Vec2 pos = toSpacePos(mouseX, mouseY);
                     this.draggingJoint.setTarget(pos);
+                    return;
+                case ROTATE:
+                    Vec2 center = this.rotatingBody.getPosition();
+                    Vec2 edge = toSpacePos(currentMouseX, currentMouseY);
+                    float currentAngle = (float) calculateRotation(center, edge);
+                    float angle = currentAngle - this.mouseOrgRotation;
+                    if (hasShiftDown()) {
+                        angle = (float) stepAngle(angle);
+                    }
+                    getSimulator().executeCommand(new CommandRotateBody(this.rotatingBody, this.bodyOrgRotation - angle, false));
+                    return;
             }
         }
     }
@@ -542,13 +633,14 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                                 if (!results.isEmpty() && results.get(0).getType() == BodyType.DYNAMIC) {
                                     this.state = State.DRAG;
 
+                                    getSimulator().executeCommand(new CommandDragBody(null));
+
                                     if (this.toolConfig.dragToolDragCenter) {
                                         getSimulator().setBodyPosLocal(results.get(0), pos);
                                     }
 
                                     MouseJointDef jointDef = new MouseJointDef();
-                                    Body tempBody = getSimulator().getSpace().createBody(new BodyDef());
-                                    jointDef.bodyA = tempBody;
+                                    jointDef.bodyA = getSimulator().getSpace().createBody(new BodyDef());
                                     jointDef.bodyB = results.get(0);
                                     jointDef.target.set(pos);
                                     jointDef.maxForce = this.toolConfig.dragToolMaxForce;
@@ -571,6 +663,24 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
 //                                    System.out.println(getSimulator().getSpace().getJointCount());
 
                                     return true;
+                                }
+                                return false;
+                            case ROTATE:
+                                Vec2 mousePos = toSpacePos(mouseX, mouseY);
+                                List<Body> objects = getSimulator().pointTestSorted(mousePos);
+                                if (!objects.isEmpty()) {
+                                    this.state = State.ROTATE;
+                                    Body body = objects.get(0);
+                                    getSimulator().freezeBody(body);
+
+                                    this.bodyOrgRotation = body.getAngle();
+
+                                    this.rotatingBody = body;
+                                    Vec2 center = body.getPosition().clone();
+                                    Vec2 edge = mousePos.clone();
+                                    this.mouseOrgRotation = (float) calculateRotation(center, edge);
+
+                                    getSimulator().executeCommand(new CommandRotateBody(body, this.bodyOrgRotation, true));
                                 }
                                 return false;
                         }
@@ -658,7 +768,15 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                     case DRAG:
                         this.draggingJoint.getBodyB().setFixedRotation(false);
                         getSimulator().getSpace().destroyBody(this.draggingJoint.getBodyA());
+                        getSimulator().executeCommand(new CommandDragBody(this.draggingJoint.getBodyB()));
                         this.draggingJoint = null;
+                        this.state = State.NONE;
+                        return true;
+                    case ROTATE:
+                        getSimulator().unfreezeBody(this.rotatingBody);
+                        this.rotatingBody = null;
+                        this.bodyOrgRotation = 0F;
+                        this.mouseOrgRotation = 0F;
                         this.state = State.NONE;
                         return true;
                 }
@@ -716,6 +834,12 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        switch (keyCode) {
+            case GLFW_KEY_LEFT_SHIFT:
+            case GLFW_KEY_RIGHT_SHIFT:
+                mouseMoved(currentMouseX, currentMouseY); // to update the drawing or rotating when the mouse didn't move
+                return true;
+        }
         return false;
     }
 
@@ -789,6 +913,10 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                         return true;
                 }
                 return false;
+            case GLFW_KEY_LEFT_SHIFT:
+            case GLFW_KEY_RIGHT_SHIFT:
+                mouseMoved(currentMouseX, currentMouseY); // to update the drawing or rotating when the mouse didn't move
+                return true;
         }
         return false;
     }
@@ -801,14 +929,9 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
             case CIRCLE:
                 start = this.drawPoints.get(0);
                 end = this.drawPoints.get(1);
-                double angle = MyVec2.angle(end.sub(start), new Vec2(0F, 1F));
+                double angle = calculateRotation(start, end);
                 if (hasShiftDown()) {
-                    double step = angle / PER_STEP;
-                    int steps = (int) Math.round(step);
-                    angle = PER_STEP * steps;
-                }
-                if (end.sub(start).x < 0F) {
-                    angle = -angle;
+                    angle = stepAngle(angle);
                 }
                 shapes[0] = new CircleShape();
                 shapes[0].setRadius(start.sub(end).length());
@@ -943,7 +1066,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
 }
 
 enum State {
-    NONE, MOVING, DRAW, DRAG
+    NONE, MOVING, DRAW, DRAG, ROTATE
 }
 
 enum DrawShapes {
@@ -954,7 +1077,8 @@ enum Tools {
     DRAW_CIRCLE(0, 0, "physicscontrol.gui.sim.name.sphere", 0),
     DRAW_BOX(1, 0, "physicscontrol.gui.sim.name.box", 0),
     DRAW_POLYGON(2, 0, "physicscontrol.gui.sim.name.polygon", 0),
-    DRAG(0, 1, "physicscontrol.gui.sim.tool.drag", 1);
+    DRAG(0, 1, "physicscontrol.gui.sim.tool.drag", 1),
+    ROTATE(1, 1, "physicscontrol.gui.sim.tool.rotate", 1);
 
     public float u, v;
     public String localizeName;

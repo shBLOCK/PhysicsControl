@@ -225,8 +225,10 @@ public class NBTSerializer {
         ListNBT list = new ListNBT();
         int i = 0;
         while (body != null) {
-            list.add(toNBT(body));
-            i++;
+            if (body.getUserData() instanceof BodyUserObj) {
+                list.add(toNBT(body));
+                i++;
+            }
             body = body.m_next;
         }
         nbt.put("list", list);

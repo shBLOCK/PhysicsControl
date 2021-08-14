@@ -6,6 +6,7 @@ import com.shblock.physicscontrol.proxy.ClientProxy;
 import com.shblock.physicscontrol.proxy.CommonProxy;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
+import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.ParticleFactoryRegisterEvent;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.eventbus.api.IEventBus;

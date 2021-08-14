@@ -6,7 +6,7 @@ public class CommandStartSimulation extends PhysicsCommandBase {
     public CommandStartSimulation() {}
 
     /**
-     * @param dummyValue NOT USER!!!  Just a dummy value for a different with the constructor on top
+     * @param dummyValue NOT USED!!!  Just a dummy value for a different with the constructor on top
      */
     public CommandStartSimulation(boolean dummyValue) {
         super(null);

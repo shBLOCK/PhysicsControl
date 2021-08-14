@@ -136,6 +136,7 @@ public class GlobalImGuiRenderer {
         ImFontConfig fontConfig = new ImFontConfig();
         fontConfig.setPixelSnapH(true);
         fontConfig.setGlyphRanges(glyphRanges);
+//        fontConfig.setGlyphRanges(io.getFonts().getGlyphRangesChineseFull());
         String default_font_path = FONTS_PATH.resolve(DEFAULT_FONT_NAME).toString();
         fontAtlas.addFontFromFileTTF(default_font_path, 16, fontConfig);
         fontAtlas.addFontFromFileTTF(default_font_path, 8, fontConfig);
