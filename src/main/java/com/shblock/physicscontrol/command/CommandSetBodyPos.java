@@ -7,12 +7,13 @@ import net.minecraft.nbt.CompoundNBT;
 import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.Body;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class CommandSetBodyPos extends PhysicsCommandBase {
-    private List<Integer> objects;
+    private List<Integer> objects = new ArrayList<>();
     private Vec2 offset;
     private boolean isFirst;
 

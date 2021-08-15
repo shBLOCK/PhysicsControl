@@ -7,10 +7,7 @@ import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
 import com.shblock.physicscontrol.client.gui.GlobalImGuiRenderer;
 import com.shblock.physicscontrol.client.gui.ImGuiBase;
 import com.shblock.physicscontrol.client.gui.RenderHelper;
-import com.shblock.physicscontrol.command.CommandAddRigidBody;
-import com.shblock.physicscontrol.command.CommandDragBody;
-import com.shblock.physicscontrol.command.CommandRotateBody;
-import com.shblock.physicscontrol.command.CommandSingleStep;
+import com.shblock.physicscontrol.command.*;
 import com.shblock.physicscontrol.physics.physics.BodyUserObj;
 import com.shblock.physicscontrol.physics.util.*;
 import imgui.ImGui;
@@ -66,6 +63,9 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
     private Body rotatingBody = null;
     private float bodyOrgRotation = 0F;
     private float mouseOrgRotation = 0F;
+    private Body applyForceBody = null;
+    private Vec2 applyForceLocalPoint = null;
+    private Vec2 applyForceVec = null;
 
     private ToolConfig toolConfig = new ToolConfig();
     private ToolEditGui toolEditGui;
@@ -93,11 +93,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
 //        }
 //        new InteractivePhysicsSimulator2D(space);
         new InteractivePhysicsSimulator2D(new World(new Vec2(0F, -9.8F)));
-    }
 
-    @Override
-    protected void init() {
-        super.init();
         try {
             autoLoad();
         } catch (Exception | AssertionError e) {
@@ -177,40 +173,6 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
         getSimulator().tick();
     }
 
-    @Override
-    public void buildImGui() {
-        ImGui.showDemoWindow();
-
-        ToolEditGui newGui = ImGuiBuilder.buildToolSelectorUI();
-        if (this.toolEditGui == null && newGui != null) {
-            this.toolEditGui = newGui;
-        }
-
-        ImGuiBuilder.buildFileUI();
-
-        switch (this.state) {
-            case DRAW:
-                buildImGuiDrawing();
-                break;
-            case ROTATE:
-                buildImGuiRotating();
-                break;
-        }
-
-        for (int i=0; i<this.bodyEditGuis.size(); i++) {
-            if (!this.bodyEditGuis.get(i).buildImGui()) {
-                this.bodyEditGuis.remove(i);
-                i--;
-            }
-        }
-
-        if (this.toolEditGui != null) {
-            if (!this.toolEditGui.buildImGui(this.toolConfig)) {
-                this.toolEditGui = null;
-            }
-        }
-    }
-
     public int getNextGuiId() {
         this.currentGuiId++;
         return this.currentGuiId;
@@ -281,6 +243,9 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                 break;
             case ROTATE:
                 renderRotating(matrixStack);
+                break;
+            case GIVE_FORCE:
+                renderGiveForce(matrixStack);
                 break;
         }
 
@@ -390,6 +355,79 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
         matrixStack.popPose();
     }
 
+    private void renderGiveForce(MatrixStack matrixStack) {
+        updateGiveForce();
+
+        matrixStack.pushPose();
+        Vec2 start = this.applyForceBody.getWorldPoint(this.applyForceLocalPoint);
+        start.y = -start.y;
+        Matrix4f matrix = matrixStack.last().pose();
+
+        float scale = 1 / this.globalScale / toolConfig.giveForceStrength;
+        Vec2 temp = this.applyForceVec.clone();
+        temp.y = -temp.y;
+        RenderHelper.drawArrow(matrix, start, start.add(temp.mul(scale)), 1F, 1F, 1F, 0.8F);
+
+        matrixStack.popPose();
+    }
+
+    private void updateGiveForce() {
+        Vec2 mp = new Vec2(currentMouseX, currentMouseY);
+        Vec2 mpWorld = toSpacePos(mp);
+        Vec2 startPointWorldPos = this.applyForceBody.getWorldPoint(this.applyForceLocalPoint);
+        Vec2 startPointScreenPos = toScreenPos(startPointWorldPos);
+        this.applyForceVec = startPointScreenPos.sub(mp).mul(toolConfig.giveForceStrength);
+        this.applyForceVec.x = -this.applyForceVec.x;
+        if (toolConfig.giveForceIsStatic) {
+            this.applyForceVec.normalize();
+            this.applyForceVec.mulLocal(toolConfig.giveForceStaticForce);
+        }
+
+        if (hasShiftDown()) {
+            double a = calculateRotation(new Vec2(0F, 1F), this.applyForceVec);
+            a = stepAngle(a);
+            float length = this.applyForceVec.length();
+            this.applyForceVec = new Vec2(Math.sin(a) * length, Math.cos(a) * length);
+        }
+    }
+
+    @Override
+    public void buildImGui() {
+        ImGui.showDemoWindow();
+
+        ToolEditGui newGui = ImGuiBuilder.buildToolSelectorUI();
+        if (this.toolEditGui == null && newGui != null) {
+            this.toolEditGui = newGui;
+        }
+
+        ImGuiBuilder.buildFileUI();
+
+        switch (this.state) {
+            case DRAW:
+                buildImGuiDrawing();
+                break;
+            case ROTATE:
+                buildImGuiRotating();
+                break;
+            case GIVE_FORCE:
+                buildImGuiGiveForce();
+                break;
+        }
+
+        for (int i=0; i<this.bodyEditGuis.size(); i++) {
+            if (!this.bodyEditGuis.get(i).buildImGui()) {
+                this.bodyEditGuis.remove(i);
+                i--;
+            }
+        }
+
+        if (this.toolEditGui != null) {
+            if (!this.toolEditGui.buildImGui(this.toolConfig)) {
+                this.toolEditGui = null;
+            }
+        }
+    }
+
     private void buildImGuiDrawing() {
         switch (this.drawingShape) {
             case CIRCLE:
@@ -446,6 +484,10 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
             sectorSize++;
         }
         ImGui.setTooltip(String.format(I18nHelper.localizeNumFormat("physicscontrol.gui.sim.tooltip.rotate_body"), Math.abs(Math.toDegrees(sectorSize * Math.PI * 2))));
+    }
+
+    private void buildImGuiGiveForce() {
+        ImGui.setTooltip(String.format(I18nHelper.localizeNumFormat("physicscontrol.gui.sim.tooltip.give_force.strength"), this.applyForceVec.length()));
     }
 
     private void drawScaleMeasure(MatrixStack matrixStack) {
@@ -590,6 +632,9 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                     }
                     getSimulator().executeCommand(new CommandRotateBody(this.rotatingBody, this.bodyOrgRotation - angle, false));
                     return;
+                case GIVE_FORCE:
+                    // Updated in updateGiveForce()
+                    return;
             }
         }
     }
@@ -681,6 +726,19 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                                     this.mouseOrgRotation = (float) calculateRotation(center, edge);
 
                                     getSimulator().executeCommand(new CommandRotateBody(body, this.bodyOrgRotation, true));
+                                }
+                                return false;
+                            case GIVE_FORCE:
+                                Vec2 mp = toSpacePos(mouseX, mouseY);
+                                List<Body> objs = getSimulator().pointTestSorted(mp);
+                                if (!objs.isEmpty()) {
+                                    if (objs.get(0).getType() == BodyType.DYNAMIC) {
+                                        this.state = State.GIVE_FORCE;
+                                        this.applyForceBody = objs.get(0);
+                                        this.applyForceLocalPoint = applyForceBody.getLocalPoint(mp);
+                                        this.applyForceVec = new Vec2();
+                                        return true;
+                                    }
                                 }
                                 return false;
                         }
@@ -777,6 +835,13 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                         this.rotatingBody = null;
                         this.bodyOrgRotation = 0F;
                         this.mouseOrgRotation = 0F;
+                        this.state = State.NONE;
+                        return true;
+                    case GIVE_FORCE:
+                        getSimulator().executeCommand(new CommandGiveForce(this.applyForceBody, this.applyForceLocalPoint, this.applyForceVec));
+                        this.applyForceBody = null;
+                        this.applyForceLocalPoint = null;
+                        this.applyForceVec = null;
                         this.state = State.NONE;
                         return true;
                 }
@@ -910,6 +975,12 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                         this.state = State.NONE;
                         this.drawingShape = null;
                         this.drawPoints.clear();
+                        return true;
+                    case GIVE_FORCE:
+                        this.applyForceBody = null;
+                        this.applyForceLocalPoint = null;
+                        this.applyForceVec = null;
+                        this.state = State.NONE;
                         return true;
                 }
                 return false;
@@ -1066,7 +1137,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
 }
 
 enum State {
-    NONE, MOVING, DRAW, DRAG, ROTATE
+    NONE, MOVING, DRAW, DRAG, ROTATE, GIVE_FORCE
 }
 
 enum DrawShapes {
@@ -1077,8 +1148,9 @@ enum Tools {
     DRAW_CIRCLE(0, 0, "physicscontrol.gui.sim.name.sphere", 0),
     DRAW_BOX(1, 0, "physicscontrol.gui.sim.name.box", 0),
     DRAW_POLYGON(2, 0, "physicscontrol.gui.sim.name.polygon", 0),
-    DRAG(0, 1, "physicscontrol.gui.sim.tool.drag", 1),
-    ROTATE(1, 1, "physicscontrol.gui.sim.tool.rotate", 1);
+    DRAG(0, 1, "physicscontrol.gui.sim.tool.drag", 2),
+    ROTATE(1, 1, "physicscontrol.gui.sim.tool.rotate", 2),
+    GIVE_FORCE(2, 1, "physicscontrol.gui.sim.tool.give_force", 2);
 
     public float u, v;
     public String localizeName;

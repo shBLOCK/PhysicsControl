@@ -21,6 +21,7 @@ import org.apache.logging.log4j.Level;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.util.Arrays;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.glfw.GLFW.glfwGetClipboardString;
@@ -131,18 +132,17 @@ public class GlobalImGuiRenderer {
 
         final ImFontAtlas fontAtlas = io.getFonts();
 
-        short[] glyphRanges = {0x1, Short.MAX_VALUE, 0};
+        short[] glyphRanges = {Short.MIN_VALUE, -1, 1, Short.MAX_VALUE, 0};
 
         ImFontConfig fontConfig = new ImFontConfig();
         fontConfig.setPixelSnapH(true);
         fontConfig.setGlyphRanges(glyphRanges);
-//        fontConfig.setGlyphRanges(io.getFonts().getGlyphRangesChineseFull());
         String default_font_path = FONTS_PATH.resolve(DEFAULT_FONT_NAME).toString();
         fontAtlas.addFontFromFileTTF(default_font_path, 16, fontConfig);
         fontAtlas.addFontFromFileTTF(default_font_path, 8, fontConfig);
         fontAtlas.addFontFromFileTTF(default_font_path, 24, fontConfig);
         fontAtlas.addFontFromFileTTF(default_font_path, 32, fontConfig);
-        PhysicsControl.log(Level.DEBUG, "Loaded default font file: " + DEFAULT_FONT_NAME);
+        PhysicsControl.log(Level.INFO, "Loaded default font file: " + DEFAULT_FONT_NAME);
 
         File[] files = FONTS_PATH.toFile().listFiles();
         if (files != null) {
@@ -155,7 +155,7 @@ public class GlobalImGuiRenderer {
                     fontAtlas.addFontFromFileTTF(file.toString(), 8, fontConfig);
                     fontAtlas.addFontFromFileTTF(file.toString(), 24, fontConfig);
                     fontAtlas.addFontFromFileTTF(file.toString(), 32, fontConfig);
-                    PhysicsControl.log(Level.DEBUG, "Loaded font file: " + file.getName());
+                    PhysicsControl.log(Level.INFO, "Loaded font file: " + file.getName());
                 }
             }
         }

@@ -1,6 +1,8 @@
 package com.shblock.physicscontrol.client.gui;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.shblock.physicscontrol.client.gui.PhysicsSimulator.GuiPhysicsSimulator;
+import com.shblock.physicscontrol.physics.util.MyVec2;
 import net.minecraft.client.renderer.BufferBuilder;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
@@ -222,6 +224,38 @@ public class RenderHelper {
         builder.vertex(matrix, start.x, start.y, 0F).color(r, g, b, a).endVertex();
         builder.vertex(matrix, end.x, end.y, 0F).color(r, g, b, a).endVertex();
         tessellator.end();
+
+        RenderSystem.enableTexture();
+        GL11.glDisable(GL11.GL_LINE_SMOOTH);
+        RenderSystem.lineWidth(1F);
+    }
+
+    public static void drawArrow(Matrix4f matrix, Vec2 start, Vec2 end, float r, float g, float b, float a) {
+        RenderSystem.disableTexture();
+        GL11.glEnable(GL11.GL_LINE_SMOOTH);
+        float length = end.sub(start).length();
+        RenderSystem.lineWidth(length * 0.15F);
+
+        Tessellator tessellator = Tessellator.getInstance();
+        BufferBuilder builder = tessellator.getBuilder();
+        builder.begin(GL11.GL_LINES, DefaultVertexFormats.POSITION_COLOR);
+        builder.vertex(matrix, start.x, start.y, 0F).color(r, g, b, a).endVertex();
+        builder.vertex(matrix, end.x, end.y, 0F).color(r, g, b, a).endVertex();
+        tessellator.end();
+
+        float angle = (float) MyVec2.angle(end.sub(start), new Vec2(0F, 1F));
+        if (end.sub(start).x < 0F) {
+            angle = -angle;
+        }
+        float deltaAngle = (float) (Math.PI * 0.15F);
+        float size = length * 0.05F;
+        RenderSystem.disableCull();
+        builder.begin(GL11.GL_TRIANGLES, DefaultVertexFormats.POSITION_COLOR);
+        builder.vertex(matrix, end.x, end.y, 0F).color(r, g, b, a).endVertex();
+        builder.vertex(matrix, end.x - (float) (Math.sin(angle + deltaAngle) * size), end.y - (float) (Math.cos(angle + deltaAngle) * size), 0F).color(r, g, b, a).endVertex();
+        builder.vertex(matrix, end.x - (float) (Math.sin(angle - deltaAngle) * size), end.y - (float) (Math.cos(angle - deltaAngle) * size), 0F).color(r, g, b, a).endVertex();
+        tessellator.end();
+        RenderSystem.enableCull();
 
         RenderSystem.enableTexture();
         GL11.glDisable(GL11.GL_LINE_SMOOTH);

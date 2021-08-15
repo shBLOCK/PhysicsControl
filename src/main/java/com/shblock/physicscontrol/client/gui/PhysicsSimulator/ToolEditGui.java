@@ -18,15 +18,19 @@ public class ToolEditGui {
         this.tool = tool;
     }
 
+    private boolean startPopup() {
+        if (this.isFirstRender) {
+            ImGui.openPopup("##tool_edit_gui");
+            this.isFirstRender = false;
+        }
+        return ImGui.beginPopup("##tool_edit_gui");
+    }
+
     public boolean buildImGui(ToolConfig config) {
         switch (this.tool) {
             case DRAG:
-                if (this.isFirstRender) {
-                    ImGui.openPopup("##tool_edit_gui");
-                    this.isFirstRender = false;
-                }
-                if (ImGui.beginPopup("##tool_edit_gui")) {
-                    //Max Force
+                if (startPopup()) {
+                    // Max Force
                     ImGui.text(I18n.get(PREFIX + "drag.max_force"));
                     ImGui.sameLine();
                     ImFloat max_force = new ImFloat(config.dragToolMaxForce);
@@ -34,7 +38,7 @@ public class ToolEditGui {
                         config.dragToolMaxForce = max_force.get();
                     }
 
-                    //Damping Ratio
+                    // Damping Ratio
                     ImGui.text(I18n.get(PREFIX + "drag.damping"));
                     ImGui.sameLine();
                     ImFloat damping = new ImFloat(config.dragToolDampingRatio);
@@ -42,22 +46,50 @@ public class ToolEditGui {
                         config.dragToolDampingRatio = damping.get();
                     }
 
-                    //Disable Roatation
+                    // Disable Roatation
                     if (ImGui.checkbox(I18n.get(PREFIX + "drag.disable_rotation"), config.dragToolDisableRotation)) {
                         config.dragToolDisableRotation = !config.dragToolDisableRotation;
                     }
 
-                    //Drag Center
+                    // Drag Center
                     if (ImGui.checkbox(I18n.get(PREFIX + "drag.drag_center"), config.dragToolDragCenter)) {
                         config.dragToolDragCenter = !config.dragToolDragCenter;
                     }
 
-                    //Frequency
+                    // Frequency
                     ImGui.text(I18n.get(PREFIX + "drag.frequency"));
                     ImGui.sameLine();
                     ImFloat frequency = new ImFloat(config.dragToolFrequency);
                     if (ImGui.sliderScalar("##frequency", ImGuiDataType.Float, frequency, 0.5F, 60F, I18nHelper.localizeNumFormat(PREFIX + "drag.frequency.num"), ImGuiSliderFlags.None)) {
                         config.dragToolFrequency = frequency.get();
+                    }
+
+                    ImGui.endPopup();
+                    return true;
+                } else {
+                    return false;
+                }
+            case GIVE_FORCE:
+                if (startPopup()) {
+                    // Is static force
+                    if (ImGui.checkbox(I18n.get(PREFIX + "give_force.is_static"), config.giveForceIsStatic)) {
+                        config.giveForceIsStatic = !config.giveForceIsStatic;
+                    }
+
+                    // Strength
+                    ImGui.text(I18n.get(PREFIX + "give_force.strength"));
+                    ImGui.sameLine();
+                    ImFloat strength = new ImFloat(config.giveForceStrength);
+                    if (ImGui.sliderScalar("##strength", ImGuiDataType.Float, strength, 0.1F, 100F, I18nHelper.localizeNumFormat(PREFIX + "give_force.strength.num"), ImGuiSliderFlags.Logarithmic)) {
+                        config.giveForceStrength = strength.get();
+                    }
+
+                    // Static force
+                    ImGui.text(I18n.get(PREFIX + "give_force.static_force"));
+                    ImGui.sameLine();
+                    ImFloat staticForce = new ImFloat(config.giveForceStaticForce);
+                    if (ImGui.sliderScalar("##static_force", ImGuiDataType.Float, staticForce, 0.1F, 100000F, I18nHelper.localizeNumFormat(PREFIX + "give_force.static_force.num"), ImGuiSliderFlags.Logarithmic)) {
+                        config.giveForceStaticForce = staticForce.get();
                     }
 
                     ImGui.endPopup();

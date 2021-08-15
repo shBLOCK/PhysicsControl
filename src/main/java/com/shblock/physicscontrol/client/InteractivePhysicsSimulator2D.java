@@ -155,10 +155,12 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
     }
 
     public void freezeBody(Body body) {
-        body.setGravityScale(0F);
-        body.setLinearVelocity(new Vec2(0F, 0F));
-        body.setAngularVelocity(0F);
-        body.setFixedRotation(true);
+        if (body.getUserData() instanceof BodyUserObj) {
+            body.setGravityScale(0F);
+            body.setLinearVelocity(new Vec2(0F, 0F));
+            body.setAngularVelocity(0F);
+            body.setFixedRotation(true);
+        }
     }
 
     public void startMove() {
@@ -168,10 +170,12 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
     }
 
     public void unfreezeBody(Body body) {
-        body.setGravityScale(1F);
-        body.setAwake(true);
-        body.setActive(true);
-        body.setFixedRotation(false);
+        if (body.getUserData() instanceof BodyUserObj) {
+            body.setGravityScale(1F);
+            body.setAwake(true);
+            body.setActive(true);
+            body.setFixedRotation(false);
+        }
     }
 
     public void stopMove() {
@@ -268,7 +272,7 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
 
     public void selectAll() {
         unselectAll();
-        forEachBody(body -> select(body));
+        forEachBody(this::select);
     }
 
     public boolean unselect(Body obj) {

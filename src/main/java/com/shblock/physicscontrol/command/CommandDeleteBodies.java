@@ -15,7 +15,7 @@ public class CommandDeleteBodies extends PhysicsCommandBase {
     public CommandDeleteBodies() {}
 
     public CommandDeleteBodies(List<Body> objects) {
-        super();
+        super(null);
         this.objects = objects.stream().map(pco -> ((BodyUserObj) pco.getUserData()).getId()).collect(Collectors.toList());
     }
 
