@@ -1,32 +1,30 @@
 package com.shblock.physicscontrol.physics.material;
 
-import com.shblock.physicscontrol.PhysicsControl;
 import net.minecraft.item.Item;
 import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.registries.ForgeRegistryEntry;
 
-public abstract class Material extends ForgeRegistryEntry<Material> { //TODO
+public class Material {
     public final Item item;
+    public final ResourceLocation texture;
+    public final ResourceLocation sound;
+    public final float density;
+    public final float friction;
+    public final float restitution;
 
-    public Material(ResourceLocation regName, Item item) {
-        setRegistryName(regName);
+    public Material(Item item, ResourceLocation texture, ResourceLocation sound, float density, float friction, float restitution) {
         this.item = item;
+        this.texture = texture;
+        this.sound = sound;
+        this.density = density;
+        this.friction = friction;
+        this.restitution = restitution;
     }
 
-    public Material(String name, Item item) {
-        this(new ResourceLocation(PhysicsControl.MODID, name), item);
-    }
-
-    public float calcFriction(double surfaceArea, float friction, float itemAmount) {
-        return friction;
-    }
-
-    public float calcRestitution(double surfaceArea, float restitution, float itemAmount) {
-        return restitution;
+    public ResourceLocation getId() {
+        return this.item.getRegistryName();
     }
 
     public String getLocalizeName() {
-        ResourceLocation regName = getRegistryName();
-        return regName.getNamespace() + ".physics.material." + regName.getPath() + ".name";
+        return "pc.physics.material." + item.getRegistryName();
     }
 }

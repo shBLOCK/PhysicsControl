@@ -2,6 +2,7 @@ buildscript {
     repositories {
         maven { url = 'https://maven.minecraftforge.net' }
         mavenCentral()
+        jcenter()
     }
     dependencies {
         classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '5.1.+', changing: true
@@ -163,11 +164,6 @@ protobuf {
     }
 }
 
-//configurations {
-//    shade
-//    compile.extendsFrom shade
-//}
-
 repositories {
     flatDir {
         dirs 'libs'
@@ -189,6 +185,13 @@ ext {
     gdxVersion = '1.10.0'
     box2DLightsVersion = '1.5'
 }
+
+//configurations {
+//    shade
+//    compile.extendsFrom shade
+//    apiCompile.extendsFrom compile
+//    apiCompile.extendsFrom compileOnly
+//}
 
 dependencies {
     // Specify the version of Minecraft to use, If this is any group other then 'net.minecraft' it is assumed
@@ -214,24 +217,8 @@ dependencies {
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
 
-//    //Box2D
-//    implementation name: 'jbox2d-library'
-
-//    //Bullet
-//    implementation 'com.github.stephengold:Libbulletjme:10.5.0'
-
     //ImGUI
     implementation "io.github.spair:imgui-java-app:$imguiVersion"
-//    implementation "io.github.spair:imgui-java-binding:$imguiVersion"
-//    implementation "io.github.spair:imgui-java-lwjgl3:$imguiVersion"
-//    implementation "io.github.spair:imgui-java-natives-windows-ft:$imguiVersion"
-//    implementation "io.github.spair:imgui-java-natives-linux-ft:$imguiVersion"
-//    implementation "io.github.spair:imgui-java-natives-macos-ft:$imguiVersion"
-
-//    //LibGDX ?
-//    api "com.badlogicgames.gdx:gdx-box2d:$gdxVersion"
-//    api "com.badlogicgames.gdx:gdx-bullet:$gdxVersion"
-//    api "com.badlogicgames.box2dlights:box2dlights:$box2DLightsVersion"
 
     //Proto
     implementation 'com.google.protobuf:protobuf-java:3.3.1'

@@ -3,13 +3,21 @@ package com.shblock.physicscontrol.client.gui;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.shblock.physicscontrol.client.gui.PhysicsSimulator.GuiPhysicsSimulator;
 import com.shblock.physicscontrol.physics.util.MyVec2;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.BufferBuilder;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.WorldVertexBufferUploader;
+import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.vector.Matrix4f;
 import org.jbox2d.common.Vec2;
 import org.lwjgl.opengl.GL11;
 
+import javax.annotation.Nullable;
 import java.util.List;
 
 public class RenderHelper {
@@ -17,23 +25,33 @@ public class RenderHelper {
     public static float CIRCLE_DIRECTION_SIZE = 0.04F;
     public static float COLOR_DECREASE = 0.5F;
 
-    public static void drawCircle(Matrix4f matrix, float radius, float r, float g, float b, float a) {
-        RenderSystem.disableTexture();
+    public static void drawCircle(Matrix4f matrix, float radius, float r, float g, float b, float a, @Nullable ResourceLocation texture) {
+        if (texture != null) {
+            Minecraft.getInstance().getTextureManager().bind(texture);
+        }
+
+        if (texture == null) {
+            RenderSystem.disableTexture();
+        } else {
+            RenderSystem.enableTexture();
+        }
 
         Tessellator tessellator = Tessellator.getInstance();
         BufferBuilder builder = tessellator.getBuilder();
-        builder.begin(GL11.GL_POLYGON, DefaultVertexFormats.POSITION_COLOR);
+        builder.begin(GL11.GL_POLYGON, texture == null ? DefaultVertexFormats.POSITION_COLOR : DefaultVertexFormats.POSITION_COLOR_TEX);
         for (int i=0; i<CIRCLE_SIDES; i++) {
-            builder.vertex(matrix,
-                    (float) Math.sin(Math.PI * ((float) i / CIRCLE_SIDES) * 2F) * radius,
-                    (float) Math.cos(Math.PI * ((float) i / CIRCLE_SIDES) * 2F) * radius,
-                    0F)
-            .color(r, g, b, a)
-            .endVertex();
+            float x = (float) Math.sin(Math.PI * ((float) i / CIRCLE_SIDES) * 2F) * radius;
+            float y = (float) Math.cos(Math.PI * ((float) i / CIRCLE_SIDES) * 2F) * radius;
+            builder.vertex(matrix, x, y, 0F)
+                    .color(r, g, b, a)
+                    .uv(x, y)
+                    .endVertex();
         }
         tessellator.end();
 
-        RenderSystem.enableTexture();
+        if (texture == null) {
+            RenderSystem.enableTexture();
+        }
     }
 
     public static void drawSector(Matrix4f matrix, float radius, float size, float r, float g, float b, float a) {
@@ -181,6 +199,7 @@ public class RenderHelper {
 
     public static void drawPolygon(Matrix4f matrix, List<Vec2> vertexes, float r, float g, float b, float a) {
         RenderSystem.disableTexture();
+        RenderSystem.enableTexture();
         RenderSystem.disableCull();
 
         Tessellator tessellator = Tessellator.getInstance();

@@ -1,28 +1,33 @@
 package com.shblock.physicscontrol.client.gui.PhysicsSimulator;
 
+import com.shblock.physicscontrol.Config;
 import com.shblock.physicscontrol.PhysicsControl;
 import com.shblock.physicscontrol.client.I18nHelper;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
 import com.shblock.physicscontrol.client.gui.GlobalImGuiRenderer;
 import com.shblock.physicscontrol.command.CommandEditBodyProperty;
 import com.shblock.physicscontrol.command.EditOperations2D;
+import com.shblock.physicscontrol.physics.material.Material;
 import com.shblock.physicscontrol.physics.physics.BodyUserObj;
 import com.shblock.physicscontrol.physics.util.NBTSerializer;
 import com.shblock.physicscontrol.physics.util.ShapeHelper;
 import imgui.ImColor;
 import imgui.ImGui;
+import imgui.ImVec2;
+import imgui.ImVec4;
 import imgui.extension.implot.ImPlot;
 import imgui.flag.*;
 import imgui.type.ImBoolean;
 import imgui.type.ImFloat;
 import imgui.type.ImString;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.SimpleTexture;
+import net.minecraft.client.renderer.texture.Texture;
+import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
-import net.minecraft.nbt.StringNBT;
 import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.common.util.INBTSerializable;
 import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.Body;
@@ -203,6 +208,7 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
         this.displayMainWindow = nbt.getBoolean("display_main_window");
         this.bodyId = nbt.getInt("body_id");
         this.modules.clear();
+//        FIXME: fix the crash bug and re enable this part
 //        ListNBT list = nbt.getList("modules", Constants.NBT.TAG_COMPOUND);
 //        for (int i=0; i<list.size(); i++) {
 //            int guiId = GuiPhysicsSimulator.tryGetInstance().getNextGuiId();
@@ -298,6 +304,11 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
         public void build(BodyEditGui gui, Body body, BodyUserObj obj) {
             boolean isStatic = body.getType() == BodyType.STATIC;
 
+            // Material
+            buildMaterialSelector(gui, body, obj);
+
+            ImGui.separator();
+
             // Static
             ImGui.pushID("static");
             if (ImGui.checkbox(I18n.get("physicscontrol.gui.sim.edit.module.material.static"), isStatic)) {
@@ -305,9 +316,6 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
                 isStatic = !isStatic;
             }
             ImGui.popID();
-
-            // Material
-            ImGui.text("TODO: material selection!");
 
             if (!isStatic) {
                 // Density
@@ -329,6 +337,8 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
                     }
                     gui.executeOperation(new EditOperations2D.SetMass(mass.get()));
                 }
+
+                ImGui.separator();
             }
 
             // Friction
@@ -352,6 +362,72 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
             }
         }
 
+        private void buildMaterialSelector(BodyEditGui gui, Body body, BodyUserObj obj) {
+            ImVec2 windowPos = new ImVec2();
+            ImGui.getWindowPos(windowPos);
+            ImVec2 windowSize = new ImVec2();
+            ImGui.getWindowSize(windowSize);
+            ImVec2 itemSpacing = new ImVec2();
+            ImGui.getStyle().getItemSpacing(itemSpacing);
+            float windowX2 = windowPos.x + windowSize.x;
+
+            for (Map.Entry<ResourceLocation, Material> entry : Config.materials.entrySet()) {
+                Material material = entry.getValue();
+                ResourceLocation id = entry.getKey();
+
+                TextureManager manager = Minecraft.getInstance().getTextureManager();
+                Texture texture = manager.getTexture(material.texture);
+                if (texture == null) {
+                    manager.bind(material.texture);
+                    texture = manager.getTexture(material.texture);
+                }
+                int image = texture.getId();
+
+                boolean selected = false;
+                if (obj.getMaterial() != null) {
+                    if (obj.getMaterial().getId().equals(material.getId())) {
+                        selected = true;
+                    }
+                }
+                ImGui.pushID("material_button:" + id.toString());
+                if (selected) {
+                    ImVec4 color = ImGui.getStyle().getColor(ImGuiCol.ButtonActive);
+                    ImGui.pushStyleColor(ImGuiCol.Button, color.x, color.y, color.z, color.w);
+                    if (ImGui.imageButton(image, 32, 32, 0F, 0F, 1F, 1F, 5)) {
+                        gui.executeOperation(new EditOperations2D.SetMaterial(null));
+                        selected = false;
+                    }
+                    ImGui.popStyleColor(1);
+                } else {
+                    if (ImGui.imageButton(image, 32, 32, 0F, 0F, 1F, 1F, 5)) {
+                        gui.executeOperation(new EditOperations2D.SetMaterial(material));
+                        selected = false;
+                    }
+                }
+                ImGui.popID();
+
+                if (ImGui.isItemHovered()) {
+                    ImGui.beginTooltip();
+                    ImGui.text(I18n.get(material.getLocalizeName()));
+                    ImGui.endTooltip();
+
+                    if (ImGui.isMouseClicked(ImGuiMouseButton.Right)) {
+                        //TODO: show material property here
+                    }
+                }
+
+                ImVec2 lastButtonPos = new ImVec2();
+                ImGui.getItemRectMax(lastButtonPos);
+                float lastButtonX2 = lastButtonPos.x;
+                float nextButtonX2 = lastButtonX2 + itemSpacing.x + 32F;
+                if (nextButtonX2 < windowX2) {
+                    ImGui.sameLine();
+                }
+            }
+
+            ImGui.newLine();
+        }
+
         @Override
         public String getId() {
             return "material";
@@ -372,7 +448,7 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
 
             String apply = I18n.get("physicscontrol.gui.sim.edit.module.movement.apply");
             String setCurrent = I18n.get("physicscontrol.gui.sim.edit.module.movement.set_current");
-
+            //TODO: implement StopMovement!!!
             if (!isStatic) {
                 // Set linear velocity
                 ImGui.alignTextToFramePadding();

@@ -5,12 +5,13 @@ import com.shblock.physicscontrol.physics.physics.BodyUserObj;
 import net.minecraft.nbt.CompoundNBT;
 import org.jbox2d.dynamics.Body;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class CommandDeleteBodies extends PhysicsCommandBase {
-    private List<Integer> objects;
+    private List<Integer> objects = new ArrayList<>();
 
     public CommandDeleteBodies() {}
 

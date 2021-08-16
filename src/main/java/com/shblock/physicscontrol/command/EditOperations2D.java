@@ -1,17 +1,21 @@
 package com.shblock.physicscontrol.command;
 
+import com.shblock.physicscontrol.Config;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
+import com.shblock.physicscontrol.physics.material.Material;
 import com.shblock.physicscontrol.physics.physics.BodyUserObj;
 import com.shblock.physicscontrol.physics.util.BodyHelper;
 import com.shblock.physicscontrol.physics.util.NBTSerializer;
 import com.shblock.physicscontrol.physics.util.ShapeHelper;
 import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.common.util.INBTSerializable;
 import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.Body;
 import org.jbox2d.dynamics.BodyType;
 
+import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -59,6 +63,7 @@ public class EditOperations2D {
         register(SetMass.class);
         register(SetFriction.class);
         register(SetRestitution.class);
+        register(SetMaterial.class);
         register(SetPos.class);
         register(SetRotation.class);
         register(SetLinearVelocity.class);
@@ -307,7 +312,7 @@ public class EditOperations2D {
 
         @Override
         public void execute(Body body, BodyUserObj obj) {
-            body.getFixtureList().setFriction(this.friction);
+            BodyHelper.forEachFixture(body, fixture -> fixture.setFriction(this.friction));
         }
 
         @Override
@@ -380,43 +385,50 @@ public class EditOperations2D {
         }
     }
 
-//    public static class SetMaterial extends EditOperationBase { // Set the property to a MC material
-//        private SetColor operationColor;
-////        private SetMass operationMass;
-//        private SetFriction operationFriction;
-//        private SetRestitution operationRestitution;
-//
-//        public SetMaterial() {}
-//
-//        public SetMaterial() {
-//
-//        }
-//
-//        @Override
-//        public void execute(Body body, CollisionObjectUserObj2D obj) {
-//
-//        }
-//
-//        @Override
-//        public boolean mergeWith(EditOperationBase operation) {
-//            return false;
-//        }
-//
-//        @Override
-//        public CompoundNBT serializeNBT() {
-//            return null;
-//        }
-//
-//        @Override
-//        public void deserializeNBT(CompoundNBT nbt) {
-//
-//        }
-//
-//        @Override
-//        public String getName() {
-//            return null;
-//        }
-//    }
+    public static class SetMaterial extends EditOperationBase {
+        private Material material;
+
+        public SetMaterial() {}
+
+        public SetMaterial(@Nullable Material material) {
+            this.material = material;
+        }
+
+        @Override
+        public void execute(Body body, BodyUserObj obj) {
+            obj.setMaterial(body, this.material);
+        }
+
+        @Override
+        public boolean mergeWith(EditOperationBase operation) {
+            if (operation instanceof SetMaterial) {
+                this.material = ((SetMaterial) operation).material;
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public CompoundNBT serializeNBT() {
+            CompoundNBT nbt = new CompoundNBT();
+            if (this.material != null) {
+                nbt.putString("material", this.material.getId().toString());
+            }
+            return nbt;
+        }
+
+        @Override
+        public void deserializeNBT(CompoundNBT nbt) {
+            if (nbt.contains("material")) {
+                this.material = Config.getMaterialFromId(new ResourceLocation(nbt.getString("material")));
+            }
+        }
+
+        @Override
+        public String getName() {
+            return "set_material";
+        }
+    }
 
     public static class SetPos extends EditOperationBase {
         private Vec2 pos;
@@ -695,40 +707,4 @@ public class EditOperations2D {
             return "set_static";
         }
     }
-
-    // We can just use CommandChangeZLevel, don't have to make another one
-//    public static class ChangeZLevel extends EditOperationBase {
-//        private int change;
-//
-//        public ChangeZLevel() {}
-//
-//        public ChangeZLevel(int change) {
-//            this.change = change;
-//        }
-//
-//        @Override
-//        public void execute(Body body, CollisionObjectUserObj2D obj) {
-//            InteractivePhysicsSimulator2D.getInstance().changeZLevel(body, this.change);
-//        }
-//
-//        @Override
-//        public boolean mergeWith(EditOperationBase operation) {
-//            return false;
-//        }
-//
-//        @Override
-//        public CompoundNBT serializeNBT() {
-//            return null;
-//        }
-//
-//        @Override
-//        public void deserializeNBT(CompoundNBT nbt) {
-//
-//        }
-//
-//        @Override
-//        public String getName() {
-//            return null;
-//        }
-//    }
 }

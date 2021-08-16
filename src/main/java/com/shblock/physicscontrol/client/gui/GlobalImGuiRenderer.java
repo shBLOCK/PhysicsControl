@@ -21,7 +21,6 @@ import org.apache.logging.log4j.Level;
 
 import java.io.File;
 import java.nio.file.Path;
-import java.util.Arrays;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.glfw.GLFW.glfwGetClipboardString;

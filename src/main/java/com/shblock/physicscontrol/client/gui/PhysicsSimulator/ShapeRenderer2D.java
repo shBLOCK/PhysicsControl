@@ -5,9 +5,16 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.shblock.physicscontrol.client.gui.RenderHelper;
 import com.shblock.physicscontrol.physics.physics.BodyUserObj;
 import com.shblock.physicscontrol.physics.util.QuaternionUtil;
+import net.minecraft.block.Blocks;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.BufferBuilder;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.texture.AtlasTexture;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
+import net.minecraft.client.renderer.vertex.VertexFormat;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.math.vector.Quaternion;
 import org.jbox2d.collision.shapes.CircleShape;
@@ -56,10 +63,15 @@ public class ShapeRenderer2D {
         float dr = r * RenderHelper.COLOR_DECREASE;
         float dg = g * RenderHelper.COLOR_DECREASE;
         float db = b * RenderHelper.COLOR_DECREASE;
+        ResourceLocation texture = userObj.getTexture();
         if (shape instanceof CircleShape) {
             float radius = shape.getRadius();
-            RenderHelper.drawCircle(matrix, radius, r, g, b, a);
-            RenderHelper.drawCircleDirection(matrix, radius, dr, dg, db, a);
+            RenderHelper.drawCircle(matrix, radius, r, g, b, a, texture);
+
+            if (texture == null) {
+                RenderHelper.drawCircleDirection(matrix, radius, dr, dg, db, a);
+            }
+
             if (isSelected) {
                 RenderHelper.drawCircleFrame(matrix, radius, SELECTED_FRAME_WIDTH, 1F, 1F, 1F, 1F);
             } else {
@@ -78,14 +90,24 @@ public class ShapeRenderer2D {
                 count = poly.getVertexCount();
             }
 
+            VertexFormat vertexFormat = DefaultVertexFormats.POSITION_COLOR;
+            if (texture != null) {
+                vertexFormat = DefaultVertexFormats.POSITION_COLOR_TEX;
+                Minecraft.getInstance().getTextureManager().bind(texture);
+            }
+
             Tessellator tessellator = Tessellator.getInstance();
             BufferBuilder builder = tessellator.getBuilder();
 
-            RenderSystem.disableTexture();
+            if (texture == null) {
+                RenderSystem.disableTexture();
+            } else {
+                RenderSystem.enableTexture();
+            }
             RenderSystem.disableCull();
 
             if (userObj.getPolygonVertexCache() != null) { // this means this shape is a polygon
-                builder.begin(GL11.GL_TRIANGLES, DefaultVertexFormats.POSITION_COLOR);
+                builder.begin(GL11.GL_TRIANGLES, vertexFormat);
                 Fixture fixture = body.getFixtureList();
                 while (fixture != null) {
                     Shape s = fixture.getShape();
@@ -93,38 +115,49 @@ public class ShapeRenderer2D {
                         PolygonShape polygon = (PolygonShape) s;
                         for (int v=0; v<polygon.getVertexCount(); v++) {
                             Vec2 vertex = polygon.m_vertices[v];
-                            builder.vertex(matrix, vertex.x, -vertex.y, 0F).color(r, g, b, a).endVertex();
+                            builder.vertex(matrix, vertex.x, -vertex.y, 0F)
+                                    .color(r, g, b, a)
+                                    .uv(vertex.x, -vertex.y)
+                                    .endVertex();
                         }
                     }
                     fixture = fixture.m_next;
                 }
             } else { // this means this shape is a box
-                builder.begin(GL11.GL_POLYGON, DefaultVertexFormats.POSITION_COLOR);
+                builder.begin(GL11.GL_POLYGON, vertexFormat);
                 for (int i = 0; i < count; i++) {
                     Vec2 vertex = vertexes[i];
-                    builder.vertex(matrix, vertex.x, -vertex.y, 0F).color(r, g, b, a).endVertex();
+                    builder.vertex(matrix, vertex.x, -vertex.y, 0F)
+                            .color(r, g, b, a)
+                            .uv(vertex.x, -vertex.y)
+                            .endVertex();
                 }
             }
             tessellator.end();
 
-            GL11.glEnable(GL11.GL_LINE_SMOOTH);
-            RenderSystem.lineWidth(isSelected ? SELECTED_FRAME_WIDTH : FRAME_WIDTH);
+                GL11.glEnable(GL11.GL_LINE_SMOOTH);
+                RenderSystem.lineWidth(isSelected ? SELECTED_FRAME_WIDTH : FRAME_WIDTH);
+                RenderSystem.disableTexture();
 
-            builder.begin(GL11.GL_LINE_LOOP, DefaultVertexFormats.POSITION_COLOR);
-            for (int i=0; i<count; i++) {
-                Vec2 vertex = vertexes[i];
-                if (isSelected) {
-                    builder.vertex(matrix, vertex.x, -vertex.y, 0F).color(1F, 1F, 1F, 1F).endVertex();
-                } else {
-                    builder.vertex(matrix, vertex.x, -vertex.y, 0F).color(dr, dg, db, a).endVertex();
+                builder.begin(GL11.GL_LINE_LOOP, DefaultVertexFormats.POSITION_COLOR);
+                for (int i=0; i<count; i++) {
+                    Vec2 vertex = vertexes[i];
+                    if (isSelected) {
+                        builder.vertex(matrix, vertex.x, -vertex.y, 0F).color(1F, 1F, 1F, 1F).endVertex();
+                    } else {
+                        builder.vertex(matrix, vertex.x, -vertex.y, 0F).color(dr, dg, db, a).endVertex();
+                    }
                 }
-            }
-            tessellator.end();
+                tessellator.end();
 
-            RenderSystem.enableTexture();
+                GL11.glDisable(GL11.GL_LINE_SMOOTH);
+                RenderSystem.lineWidth(1F);
+                RenderSystem.enableTexture();
+
+            if (texture == null) {
+                RenderSystem.enableTexture();
+            }
             RenderSystem.enableCull();
-            GL11.glDisable(GL11.GL_LINE_SMOOTH);
-            RenderSystem.lineWidth(1F);
         }
 
         RenderSystem.disableDepthTest();

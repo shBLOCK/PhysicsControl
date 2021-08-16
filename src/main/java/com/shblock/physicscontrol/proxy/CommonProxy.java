@@ -1,9 +1,13 @@
 package com.shblock.physicscontrol.proxy;
 
+import com.shblock.physicscontrol.Config;
 import com.shblock.physicscontrol.PhysicsControl;
 import com.shblock.physicscontrol.command.CommandSerializer;
 import com.shblock.physicscontrol.command.EditOperations2D;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
 
 @Mod.EventBusSubscriber(modid = PhysicsControl.MODID)
 public class CommonProxy {

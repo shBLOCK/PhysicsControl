@@ -1,24 +1,37 @@
 package com.shblock.physicscontrol.physics.physics;
 
+import com.shblock.physicscontrol.Config;
 import com.shblock.physicscontrol.physics.UserObjBase;
+import com.shblock.physicscontrol.physics.material.Material;
+import com.shblock.physicscontrol.physics.util.BodyHelper;
 import com.shblock.physicscontrol.physics.util.NBTSerializer;
 import com.shblock.physicscontrol.physics.util.ShapeHelper;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.audio.SimpleSound;
+import net.minecraft.client.resources.I18n;
+import net.minecraft.item.Item;
 import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.SoundEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.Body;
 import org.jbox2d.dynamics.World;
 
+import javax.annotation.Nullable;
+import java.util.Random;
+
 public class BodyUserObj extends UserObjBase {
+    private static final Random SOUND_RANDOMIZER = new Random();
+
     private String name;
     private int zLevel;
-    public int r = RANDOM.nextInt(156) + 50;
-    public int g = RANDOM.nextInt(156) + 50;
-    public int b = RANDOM.nextInt(156) + 50;
-    public int alpha = 255;
+    public int r, g, b, alpha;
 
     private Vec2[] polygonVertexCache = null;
 
-//    private Material material;
+    private Material material;
 
     /**
      * Dummy constructor for fromNBT, DON'T USE THIS!
@@ -31,6 +44,7 @@ public class BodyUserObj extends UserObjBase {
         super(id);
         this.zLevel = id;
         this.name = name;
+        randomColor();
     }
 
     public void moveZLevelUp(World space) {
@@ -115,6 +129,13 @@ public class BodyUserObj extends UserObjBase {
         return this.alpha / 256F;
     }
 
+    public void randomColor() {
+        r = RANDOM.nextInt(156) + 50;
+        g = RANDOM.nextInt(156) + 50;
+        b = RANDOM.nextInt(156) + 50;
+        alpha = 255;
+    }
+
     @Override
     public CompoundNBT serializeNBT() {
         CompoundNBT nbt = super.serializeNBT();
@@ -126,6 +147,9 @@ public class BodyUserObj extends UserObjBase {
         nbt.putInt("alpha", alpha);
         if (this.polygonVertexCache != null) {
             nbt.put("polygon_vertex_cache", NBTSerializer.toNBT(this.polygonVertexCache));
+        }
+        if (this.material != null) {
+            nbt.putString("material", this.material.getId().toString());
         }
         return nbt;
     }
@@ -141,6 +165,11 @@ public class BodyUserObj extends UserObjBase {
         this.alpha = nbt.getInt("alpha");
         if (nbt.contains("polygon_vertex_cache")) {
             this.polygonVertexCache = NBTSerializer.vec2listFromNBT(nbt.get("polygon_vertex_cache"));
+        }
+        if (nbt.contains("material")) {
+            this.material = Config.getMaterialFromId(new ResourceLocation(nbt.getString("material")));
+        } else {
+            this.material = null;
         }
     }
 
@@ -158,5 +187,59 @@ public class BodyUserObj extends UserObjBase {
 
     public void setPolygonVertexCache(Vec2[] polygonVertexCache) {
         this.polygonVertexCache = polygonVertexCache;
+    }
+
+    public boolean hasMaterial() {
+        return this.material != null;
+    }
+
+    public Material getMaterial() {
+        return this.material;
+    }
+
+    public void setMaterial(Body body, @Nullable Material material) {
+        this.material = material;
+
+        if (this.material != null) {
+            this.r = 255;
+            this.g = 255;
+            this.b = 255;
+            this.alpha = 255;
+            BodyHelper.forEachFixture(
+                    body,
+                    fixture -> {
+                        fixture.setDensity(material.density);
+                        fixture.setFriction(material.friction);
+                        fixture.setRestitution(material.restitution);
+                    }
+            );
+            body.resetMassData();
+        } else {
+            randomColor();
+        }
+    }
+
+    public String getMaterialId() {
+        return this.material == null ? null : this.material.getId().toString();
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    public String getMaterialName() {
+        return this.material == null ? null : I18n.get(this.material.getLocalizeName());
+    }
+
+    public Item getMaterialItem() {
+        return this.material == null ? null : this.material.item;
+    }
+
+    public ResourceLocation getTexture() {
+        return this.material == null ? null : this.material.texture;
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    public void playCollideSoundUI(float volume) {
+        if (this.material != null) {
+            Minecraft.getInstance().getSoundManager().play(SimpleSound.forUI(new SoundEvent(this.material.sound), SOUND_RANDOMIZER.nextFloat() + 0.5F, volume)); //TODO: random pitch, volume based on the collision force?
+        }
     }
 }

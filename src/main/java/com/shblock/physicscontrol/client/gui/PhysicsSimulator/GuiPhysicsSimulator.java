@@ -1,6 +1,7 @@
 package com.shblock.physicscontrol.client.gui.PhysicsSimulator;
 
 import com.mojang.blaze3d.matrix.MatrixStack;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.shblock.physicscontrol.PhysicsControl;
 import com.shblock.physicscontrol.client.I18nHelper;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
@@ -11,12 +12,21 @@ import com.shblock.physicscontrol.command.*;
 import com.shblock.physicscontrol.physics.physics.BodyUserObj;
 import com.shblock.physicscontrol.physics.util.*;
 import imgui.ImGui;
+import net.minecraft.block.Blocks;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.BufferBuilder;
+import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.texture.AtlasTexture;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.renderer.texture.TextureManager;
+import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.resources.I18n;
+import net.minecraft.inventory.container.PlayerContainer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
 import net.minecraft.util.ColorHelper;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.math.vector.Quaternion;
 import net.minecraft.util.text.StringTextComponent;
@@ -32,6 +42,7 @@ import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.*;
 import org.jbox2d.dynamics.joints.MouseJoint;
 import org.jbox2d.dynamics.joints.MouseJointDef;
+import org.lwjgl.opengl.GL11;
 
 import javax.annotation.Nullable;
 
@@ -80,18 +91,6 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
 
     public GuiPhysicsSimulator() {
         super(new StringTextComponent("Physics Simulator"));
-//        this.item = item;
-//        CompoundNBT nbt = null;
-//        if (this.item != null) {
-//            nbt = item.getTagElement("space");
-//        }
-//        World space;
-//        if (nbt != null) {
-//            space = NBTSerializer.spaceFromNBT(nbt);
-//        } else {
-//            space = new World(new Vec2(0F, -9.8F));
-//        }
-//        new InteractivePhysicsSimulator2D(space);
         new InteractivePhysicsSimulator2D(new World(new Vec2(0F, -9.8F)));
 
         try {
@@ -1133,6 +1132,10 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
         }
 
         getSimulator().deserializeNBT(nbt.getCompound("simulator"));
+    }
+
+    public float getGlobalScale() {
+        return this.globalScale;
     }
 }
 

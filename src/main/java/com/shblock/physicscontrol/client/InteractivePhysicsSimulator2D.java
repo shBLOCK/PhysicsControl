@@ -2,6 +2,7 @@ package com.shblock.physicscontrol.client;
 
 import com.google.common.collect.Lists;
 import com.shblock.physicscontrol.PhysicsControl;
+import com.shblock.physicscontrol.client.gui.PhysicsSimulator.GuiSimulatorContactListener;
 import com.shblock.physicscontrol.command.*;
 import com.shblock.physicscontrol.physics.physics.BodyUserObj;
 import com.shblock.physicscontrol.physics.util.BodyHelper;
@@ -45,6 +46,7 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
         assert currentInstance == null;
         currentInstance = this;
         this.space = space;
+        initSpace();
         this.commandHistory = new CommandHistory();
     }
 
@@ -52,9 +54,11 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
         return currentInstance;
     }
 
-//    public static void setInstance(InteractivePhysicsSimulator2D simulator) {
-//        currentInstance = simulator;
-//    }
+    public void initSpace() {
+        this.space.setContactListener(GuiSimulatorContactListener.getInstance());
+        this.space.setSleepingAllowed(false);
+        this.space.setAllowSleep(false);
+    }
 
     public void close() {
         currentInstance = null;
@@ -96,8 +100,11 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
     }
 
     public void forEachBody(Consumer<Body> consumer) {
-        for (Body body : this.idBodyMap.values()) {
-            consumer.accept(body);
+        for (int i=0; i<=this.currentId; i++) { // Because we might delete bodies in the idBodyMap while iterating
+            Body body = getBodyFromId(i);
+            if (body != null) {
+                consumer.accept(body);
+            }
         }
     }
 
@@ -217,7 +224,7 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
         return isSelected(results.get(0));
     }
 
-    public Collection<Body> contactTest(Body pco) { //TODO
+    public Collection<Body> contactTest(Body pco) {
         Collection<Body> results = new HashSet<>();
         Collision collision = getSpace().getPool().getCollision();
 
@@ -272,7 +279,7 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
 
     public void selectAll() {
         unselectAll();
-        forEachBody(this::select);
+        forEachBody(body -> select(body));
     }
 
     public boolean unselect(Body obj) {
@@ -377,9 +384,15 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
         nbt.putFloat("simulation_speed", this.simulationSpeed);
         nbt.putFloat("single_step_length", this.singleStepLength);
         nbt.put("command_history", this.commandHistory.serializeNBT());
-        int[] selected = new int[this.selectedObjects.size()];
+        List<Integer> selected = new ArrayList<>();
         for (int i=0; i<this.selectedObjects.size(); i++) {
-            selected[i] = ((BodyUserObj) this.selectedObjects.get(i).getUserData()).getId();
+            Body body = this.selectedObjects.get(i);
+            if (body != null) {
+                BodyUserObj obj = (BodyUserObj) body.getUserData();
+                if (obj != null) {
+                    selected.add(obj.getId());
+                }
+            }
         }
         nbt.putIntArray("selected_objects", selected);
         return nbt;
@@ -388,6 +401,7 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
     @Override
     public void deserializeNBT(CompoundNBT nbt) {
         this.space = NBTSerializer.spaceFromNBT(nbt.getCompound("space"));
+        initSpace();
         this.currentId = nbt.getInt("current_id");
         this.simulationRunning = false;
         this.stepMode = StepModes.values()[nbt.getInt("step_mode")];

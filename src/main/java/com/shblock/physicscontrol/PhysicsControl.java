@@ -11,10 +11,13 @@ import net.minecraftforge.client.event.ParticleFactoryRegisterEvent;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLConstructModEvent;
+import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.IForgeRegistry;
 import org.apache.logging.log4j.Level;
@@ -34,6 +37,9 @@ public class PhysicsControl {
         modEventBus.addListener(this::onCommonSetup);
         modEventBus.addListener(this::onClientSetup);
         modEventBus.addListener(this::initImGuiRenderer);
+        modEventBus.addListener(this::onLoadComplete);
+
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.COMMON_CONFIG);
     }
 
     private void onCommonSetup(final FMLCommonSetupEvent event) {
@@ -45,6 +51,11 @@ public class PhysicsControl {
     }
 
     private void onModConstruct(final FMLConstructModEvent event) {
+    }
+
+    private void onLoadComplete(final FMLLoadCompleteEvent event) {
+        PhysicsControl.log("Reading materials config...");
+        Config.initMaterials();
     }
 
     //Because this event posted closest to GL.createCapabilities(), and is the only stable one
@@ -69,7 +80,6 @@ public class PhysicsControl {
 
         @SubscribeEvent
         public static void onItemRegistry(final RegistryEvent.Register<Item> event) {
-            PhysicsControl.log("PCREGITEM!");
             IForgeRegistry<Item> register = event.getRegistry();
             register.register(new ItemPhysicsSimulator());
         }
