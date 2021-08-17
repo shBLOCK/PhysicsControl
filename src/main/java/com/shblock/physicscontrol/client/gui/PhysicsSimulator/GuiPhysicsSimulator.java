@@ -2,6 +2,7 @@ package com.shblock.physicscontrol.client.gui.PhysicsSimulator;
 
 import com.mojang.blaze3d.matrix.MatrixStack;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.shblock.physicscontrol.PhysicsControl;
 import com.shblock.physicscontrol.client.I18nHelper;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
@@ -13,7 +14,10 @@ import com.shblock.physicscontrol.physics.physics.BodyUserObj;
 import com.shblock.physicscontrol.physics.util.*;
 import imgui.ImGui;
 import net.minecraft.block.Blocks;
+import net.minecraft.client.ClipboardHelper;
+import net.minecraft.client.KeyboardListener;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.BufferBuilder;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.texture.AtlasTexture;
@@ -24,6 +28,7 @@ import net.minecraft.client.resources.I18n;
 import net.minecraft.inventory.container.PlayerContainer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.JsonToNBT;
 import net.minecraft.nbt.ListNBT;
 import net.minecraft.util.ColorHelper;
 import net.minecraft.util.ResourceLocation;
@@ -42,6 +47,7 @@ import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.*;
 import org.jbox2d.dynamics.joints.MouseJoint;
 import org.jbox2d.dynamics.joints.MouseJointDef;
+import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 
 import javax.annotation.Nullable;
@@ -82,7 +88,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
     private ToolEditGui toolEditGui;
 
     private int currentGuiId = "gui".hashCode();
-    private List<BodyEditGui> bodyEditGuis = new ArrayList<>();
+    private final List<BodyEditGui> bodyEditGuis = new ArrayList<>();
 
     private double currentMouseX = 0, currentMouseY = 0;
 
@@ -185,6 +191,10 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
         renderSpace(matrixStack, getSimulator().getSpace());
 
         drawScaleMeasure(matrixStack);
+
+        for (BodyEditGui gui : this.bodyEditGuis) {
+            gui.render(matrixStack);
+        }
     }
 
     private void renderSpace(MatrixStack matrixStack, World space) {
@@ -246,6 +256,10 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
             case GIVE_FORCE:
                 renderGiveForce(matrixStack);
                 break;
+        }
+
+        for (BodyEditGui gui : this.bodyEditGuis) {
+            gui.renderSpace(matrixStack);
         }
 
         matrixStack.popPose();
@@ -523,6 +537,23 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
         matrixStack.popPose();
     }
 
+    public void drawCenteredString(MatrixStack matrixStack, String text, int x, int y, float[] color) {
+        int r = (int) (color[0] * 255F);
+        int g = (int) (color[1] * 255F);
+        int b = (int) (color[2] * 255F);
+        int a = (int) (color[3] * 255F);
+        if (r > 255) r = 255;
+        if (g > 255) g = 255;
+        if (b > 255) b = 255;
+        if (a > 255) a = 255;
+        if (r < 0) r = 0;
+        if (g < 0) g = 0;
+        if (b < 0) b = 0;
+        if (a < 0) a = 0;
+        int col = ColorHelper.PackedColor.color(a, r, g, b);
+        drawCenteredString(matrixStack, this.font, text, x, y, col);
+    }
+
     private Vec2 toSpacePos(float x, float y) {
         return new Vec2(
                 (x - this.globalTranslate.x) / this.globalScale,
@@ -537,7 +568,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
         );
     }
 
-    private Vec2 toSpacePos(Vec2 vec) {
+    public Vec2 toSpacePos(Vec2 vec) {
         return this.toSpacePos(vec.x, vec.y);
     }
 
@@ -555,7 +586,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
         );
     }
 
-    private Vec2 toScreenPos(Vec2 vec) {
+    public Vec2 toScreenPos(Vec2 vec) {
         return this.toScreenPos(vec.x, vec.y);
     }
 
@@ -734,7 +765,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                                     if (objs.get(0).getType() == BodyType.DYNAMIC) {
                                         this.state = State.GIVE_FORCE;
                                         this.applyForceBody = objs.get(0);
-                                        this.applyForceLocalPoint = applyForceBody.getLocalPoint(mp);
+                                        this.applyForceLocalPoint = this.toolConfig.giveForceOnCenter ? new Vec2() : applyForceBody.getLocalPoint(mp);
                                         this.applyForceVec = new Vec2();
                                         return true;
                                     }
@@ -853,6 +884,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                             return false;
                         }
                         int pcoId = ((BodyUserObj) results.get(0).getUserData()).getId();
+                        getSimulator().unselectAll();
                         getSimulator().select(results.get(0));
                         for (BodyEditGui gui : this.bodyEditGuis) {
                             if (gui.getbodyId() == pcoId) {
@@ -956,6 +988,25 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                         return false;
                 }
                 return false;
+            case GLFW_KEY_C:
+                if (hasControlDown()) {
+                    if (getSimulator().isAnySelected()) {
+                        getKeyboardHandler().setClipboard(getSimulator().copyBodies(getSimulator().getSelectedBodies(), toSpacePos(currentMouseX, currentMouseY)).toString());
+                        return true;
+                    }
+                }
+                return false;
+            case GLFW_KEY_V:
+                if (hasControlDown()) {
+                    try {
+                        getSimulator().pasteBodies(JsonToNBT.parseTag(getKeyboardHandler().getClipboard()), toSpacePos(currentMouseX, currentMouseY));
+                        return true;
+                    } catch (Exception | AssertionError e) {
+                        PhysicsControl.log(Level.WARN, "Paste bodies failed!");
+                        e.printStackTrace();
+                    }
+                }
+                return false;
             case GLFW_KEY_DELETE:
                 switch (this.state) {
                     case NONE:
@@ -989,6 +1040,10 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                 return true;
         }
         return false;
+    }
+
+    private KeyboardListener getKeyboardHandler() {
+        return this.minecraft.keyboardHandler;
     }
 
     public void endShape() {
@@ -1038,6 +1093,12 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                 }
                 Vec2 pos = this.drawPoints.get(0).clone();
                 this.drawPoints.get(0).set(0F, 0F);
+
+                Vec2 centroid = PolygonHelper.calculateCentroid(this.drawPoints.toArray(new Vec2[0]));
+                for (Vec2 vec : this.drawPoints) {
+                    vec.subLocal(centroid);
+                }
+                pos.addLocal(centroid);
 
                 List<PolygonShape> results = ShapeHelper.buildPolygonShape(this.drawPoints);
                 if (results == null) {

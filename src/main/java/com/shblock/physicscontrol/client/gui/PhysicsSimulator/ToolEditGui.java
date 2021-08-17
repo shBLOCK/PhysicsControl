@@ -92,6 +92,11 @@ public class ToolEditGui {
                         config.giveForceStaticForce = staticForce.get();
                     }
 
+                    // On center
+                    if (ImGui.checkbox(I18n.get(PREFIX + "give_force.on_center"), config.giveForceOnCenter)) {
+                        config.giveForceOnCenter = !config.giveForceOnCenter;
+                    }
+
                     ImGui.endPopup();
                     return true;
                 } else {

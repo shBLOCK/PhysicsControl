@@ -1,10 +1,12 @@
 package com.shblock.physicscontrol.client.gui.PhysicsSimulator;
 
+import com.mojang.blaze3d.matrix.MatrixStack;
 import com.shblock.physicscontrol.Config;
 import com.shblock.physicscontrol.PhysicsControl;
 import com.shblock.physicscontrol.client.I18nHelper;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
 import com.shblock.physicscontrol.client.gui.GlobalImGuiRenderer;
+import com.shblock.physicscontrol.client.gui.RenderHelper;
 import com.shblock.physicscontrol.command.CommandEditBodyProperty;
 import com.shblock.physicscontrol.command.EditOperations2D;
 import com.shblock.physicscontrol.physics.material.Material;
@@ -28,6 +30,7 @@ import net.minecraft.client.resources.I18n;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraftforge.common.util.INBTSerializable;
 import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.Body;
@@ -132,6 +135,26 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
         return true;
     }
 
+    public void render(MatrixStack matrixStack) {
+        Body body = InteractivePhysicsSimulator2D.getInstance().getBodyFromId(this.bodyId);
+        if (body == null) {
+            return;
+        }
+        BodyUserObj obj = (BodyUserObj) body.getUserData();
+        this.mainWindowModules.forEach(module -> module.render(matrixStack, body, obj));
+        this.modules.values().forEach(module -> module.render(matrixStack, body, obj));
+    }
+
+    public void renderSpace(MatrixStack matrixStack) {
+        Body body = InteractivePhysicsSimulator2D.getInstance().getBodyFromId(this.bodyId);
+        if (body == null) {
+            return;
+        }
+        BodyUserObj obj = (BodyUserObj) body.getUserData();
+        this.mainWindowModules.forEach(module -> module.renderSpace(matrixStack, body, obj));
+        this.modules.values().forEach(module -> module.renderSpace(matrixStack, body, obj));
+    }
+
     public void reopenMainWindow() {
         this.displayMainWindow = true;
         this.moveToMouse = true;
@@ -221,6 +244,10 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
 
     private static abstract class Module implements INBTSerializable<CompoundNBT> {
         public abstract void build(BodyEditGui gui, Body body, BodyUserObj obj);
+
+        public void render(MatrixStack matrixStack, Body body, BodyUserObj obj) {}
+
+        public void renderSpace(MatrixStack matrixStack, Body body, BodyUserObj obj) {}
 
         public abstract String getId();
 
@@ -475,6 +502,12 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
                 ImGui.separator();
             }
 
+            if (ImGui.button(I18n.get("physicscontrol.gui.sim.edit.module.movement.stop_movement"))) {
+                gui.executeOperation(new EditOperations2D.StopMovement());
+            }
+
+            ImGui.separator();
+
             // Set pos
             ImGui.alignTextToFramePadding();
             ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.movement.position"));
@@ -637,13 +670,27 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
     }
 
     private static class ModuleMoveDistance extends Module {
-        private static final int FLAGS = ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.NoBordersInBody;
+        private static final int TABLE_FLAGS = ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders;
+        private static final int COLOR_FLAGS = ImGuiColorEditFlags.AlphaPreviewHalf | ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.NoLabel | ImGuiColorEditFlags.AlphaBar;
 
         private Vec2 origin = null;
+        private Vec2 bodyPos = null;
+        private float len, lenX, lenY;
+        private boolean drawLen, drawLenX, drawLenY;
+        private float[] colLen = new float[]{0F, 1F, 0F, 1F};
+        private float[] colLenX = new float[]{1F, 0F, 0F, 1F};
+        private float[] colLenY = new float[]{0F, 0F, 1F, 1F};
 
         public ModuleMoveDistance() {}
 
-        public static void column(String a, String b) {
+        private static void header() {
+            ImGui.tableSetupColumn(I18n.get("physicscontrol.gui.sim.edit.module.move_distance.header.type"));
+            ImGui.tableSetupColumn(I18n.get("physicscontrol.gui.sim.edit.module.move_distance.header.data"));
+            ImGui.tableSetupColumn(I18n.get("physicscontrol.gui.sim.edit.module.move_distance.header.render"));
+            ImGui.tableHeadersRow();
+        }
+
+        private static void column(String a, String b) {
             ImGui.tableNextRow();
             ImGui.tableSetColumnIndex(0);
             ImGui.text(a);
@@ -651,24 +698,145 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
             ImGui.text(b);
         }
 
+        private enum ColumnType {
+            LEN, LEN_X, LEN_Y
+        }
+
+        private void buildRenderOptions(ColumnType type) {
+            ImGui.tableSetColumnIndex(2);
+            switch (type) {
+                case LEN:
+                    if (ImGui.checkbox("##len_check", this.drawLen))
+                        this.drawLen = !this.drawLen;
+                    ImGui.sameLine();
+                    ImGui.colorEdit4("##len_col", this.colLen, COLOR_FLAGS);
+                    break;
+                case LEN_X:
+                    if (ImGui.checkbox("##lenx_check", this.drawLenX))
+                        this.drawLenX = !this.drawLenX;
+                    ImGui.sameLine();
+                    ImGui.colorEdit4("##lenx_col", this.colLenX, COLOR_FLAGS);
+                    break;
+                case LEN_Y:
+                    if (ImGui.checkbox("##leny_check", this.drawLenY))
+                        this.drawLenY = !this.drawLenY;
+                    ImGui.sameLine();
+                    ImGui.colorEdit4("##leny_col", this.colLenY, COLOR_FLAGS);
+                    break;
+            }
+        }
+
         @Override
         public void build(BodyEditGui gui, Body body, BodyUserObj obj) {
+            String numFormat = I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.move_distance.num");
+            if (ImGui.beginTable("move_distance_table", 3, TABLE_FLAGS)) {
+                header();
+                column(I18n.get("physicscontrol.gui.sim.edit.module.move_distance.distance"), String.format(numFormat, this.len));
+                buildRenderOptions(ColumnType.LEN);
+                column(I18n.get("physicscontrol.gui.sim.edit.module.move_distance.distance_x"), String.format(numFormat, this.lenX));
+                buildRenderOptions(ColumnType.LEN_X);
+                column(I18n.get("physicscontrol.gui.sim.edit.module.move_distance.distance_y"), String.format(numFormat, this.lenY));
+                buildRenderOptions(ColumnType.LEN_Y);
+                ImGui.endTable();
+            }
+
+            if (ImGui.button(I18n.get("physicscontrol.gui.sim.edit.module.move_distance.reset"))) {
+                this.origin = this.bodyPos.clone();
+            }
+        }
+
+        private boolean haveDataForRender() {
+            return this.origin != null && this.bodyPos != null;
+        }
+
+        private void drawLengthText(MatrixStack matrixStack, Vec2 start, Vec2 end, float len, float[] color) {
+            matrixStack.pushPose();
+
+            GuiPhysicsSimulator gui = GuiPhysicsSimulator.tryGetInstance();
+            String numFormat = I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.move_distance.num");
+            Vec2 a = gui.toScreenPos(start);
+            Vec2 b = gui.toScreenPos(end);
+            Vec2 mid = a.add(b.sub(a).mul(0.5F));
+
+            matrixStack.translate(mid.x, mid.y, 0F);
+            matrixStack.scale(0.75F, 0.75F, 0.75F);
+            gui.drawCenteredString(matrixStack, String.format(numFormat, len), 0, 0, color);
+
+            matrixStack.popPose();
+        }
+
+        @Override
+        public void render(MatrixStack matrixStack, Body body, BodyUserObj obj) {
+            if (drawLen) {
+                drawLengthText(matrixStack, this.origin, this.bodyPos, this.len, this.colLen);
+            }
+            if (drawLenX) {
+                drawLengthText(matrixStack, this.origin, alignToX(), this.lenX, this.colLenX);
+            }
+            if (drawLenY) {
+                drawLengthText(matrixStack, this.origin, alignToY(), this.lenY, this.colLenY);
+            }
+        }
+
+        private void drawLine(Matrix4f matrix, Vec2 start, Vec2 end, float[] color) {
+            RenderHelper.drawLine(matrix, start, end, 2F, color[0], color[1], color[2], color[3]);
+        }
+
+        private void drawTwoSidedArrow(Matrix4f matrix, Vec2 start, Vec2 end, float[] color) {
+            RenderHelper.drawArrow(matrix, start, end, color[0], color[1], color[2], color[3]);
+            RenderHelper.drawArrow(matrix, end, start, color[0], color[1], color[2], color[3]);
+        }
+
+        private Vec2 flipY(Vec2 vec) {
+            return new Vec2(vec.x, -vec.y);
+        }
+
+        private Vec2 alignToX() {
+            return new Vec2(this.bodyPos.x, this.origin.y);
+        }
+
+        private Vec2 alignToY() {
+            return new Vec2(this.origin.x, this.bodyPos.y);
+        }
+
+        @Override
+        public void renderSpace(MatrixStack matrixStack, Body body, BodyUserObj obj) {
             Vec2 pos = body.getPosition();
 
             if (this.origin == null) {
                 this.origin = pos.clone();
             }
+            this.bodyPos = body.getPosition();
+            this.len = pos.sub(this.origin).abs().length();
+            this.lenX = Math.abs(pos.x - this.origin.x);
+            this.lenY = Math.abs(pos.y - this.origin.y);
 
-            String numFormat = I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.move_distance.num");
-            if (ImGui.beginTable("move_distance_table", 2, FLAGS)) {
-                column(I18n.get("physicscontrol.gui.sim.edit.module.move_distance.distance"), String.format(numFormat, pos.sub(this.origin).abs().length()));
-                column(I18n.get("physicscontrol.gui.sim.edit.module.move_distance.distance_x"), String.format(numFormat, Math.abs(pos.x - this.origin.x)));
-                column(I18n.get("physicscontrol.gui.sim.edit.module.move_distance.distance_y"), String.format(numFormat, Math.abs(pos.y - this.origin.y)));
-                ImGui.endTable();
-            }
+            if (haveDataForRender()) {
+                Matrix4f matrix = matrixStack.last().pose();
 
-            if (ImGui.button(I18n.get("physicscontrol.gui.sim.edit.module.move_distance.reset"))) {
-                this.origin = pos.clone();
+                if (drawLen) {
+                    drawTwoSidedArrow(matrix, flipY(this.origin), flipY(this.bodyPos), this.colLen);
+                }
+                if (drawLenX) {
+                    Vec2 xPos = alignToX();
+                    drawTwoSidedArrow(matrix, flipY(this.origin), flipY(xPos), this.colLenX);
+                    if (xPos.y > this.bodyPos.y) {
+                        xPos.y += this.lenY * 0.05F;
+                    } else {
+                        xPos.y -= this.lenY * 0.05F;
+                    }
+                    drawLine(matrix, flipY(this.bodyPos), flipY(xPos), this.colLenX);
+                }
+                if (drawLenY) {
+                    Vec2 yPos = alignToY();
+                    drawTwoSidedArrow(matrix, flipY(this.origin), flipY(yPos), this.colLenY);
+                    if (yPos.x > this.bodyPos.x) {
+                        yPos.x += this.lenX * 0.05F;
+                    } else {
+                        yPos.x -= this.lenX * 0.05F;
+                    }
+                    drawLine(matrix, flipY(this.bodyPos), flipY(yPos), this.colLenY);
+                }
             }
         }
 
@@ -681,6 +849,12 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
         public CompoundNBT serializeNBT() {
             CompoundNBT nbt = super.serializeNBT();
             nbt.put("origin", NBTSerializer.toNBT(this.origin));
+            nbt.putBoolean("draw_len", this.drawLen);
+            nbt.putBoolean("draw_len_x", this.drawLenX);
+            nbt.putBoolean("draw_len_y", this.drawLenY);
+            nbt.put("col_len", NBTSerializer.toNBT(this.colLen));
+            nbt.put("col_len_x", NBTSerializer.toNBT(this.colLenX));
+            nbt.put("col_len_y", NBTSerializer.toNBT(this.colLenY));
             return nbt;
         }
 
@@ -688,6 +862,12 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
         public void deserializeNBT(CompoundNBT nbt) {
             super.deserializeNBT(nbt);
             this.origin = NBTSerializer.vec2FromNBT(nbt.getCompound("origin"));
+            this.drawLen = nbt.getBoolean("draw_len");
+            this.drawLenX = nbt.getBoolean("draw_len_x");
+            this.drawLenY = nbt.getBoolean("draw_len_y");
+            this.colLen = NBTSerializer.floatArrayFromNBT(nbt.get("col_len"));
+            this.colLenX = NBTSerializer.floatArrayFromNBT(nbt.get("col_len_x"));
+            this.colLenY = NBTSerializer.floatArrayFromNBT(nbt.get("col_len_y"));
         }
     }
 

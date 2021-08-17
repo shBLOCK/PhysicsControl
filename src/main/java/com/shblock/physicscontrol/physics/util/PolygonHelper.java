@@ -166,4 +166,36 @@ public class PolygonHelper {
         }
         return Math.abs(s/2.0);
     }
+
+    public static Vec2 calculateCentroid(Vec2[] vertexes) {
+        double area = 0.0;
+
+        double Cx = 0.0;
+        double Cy = 0.0;
+
+        Vec2 v0 = vertexes[0];
+
+        for (int i = 1; i < vertexes.length - 1; i++)
+        {
+            Vec2 v1 = new Vec2(
+                    vertexes[i].x - v0.x, vertexes[i].y - v0.y);
+
+            Vec2 v2 = new Vec2(
+                    vertexes[i + 1].x - v0.x, vertexes[i + 1].y - v0.y);
+
+            double A = (v1.x * v2.y - v2.x * v1.y) / 2;
+            area += A;
+
+            double x = 0 + v1.x + v2.x; //x=(x1+x2+x3)/3
+            double y = 0 + v1.y + v2.y; //y=(xy+y2+y3)/3
+
+            Cx += A * x;
+            Cy += A * y;
+        }
+
+        Cx = Cx / area / 3 + v0.x;
+        Cy = Cy / area / 3 + v0.y;
+
+        return new Vec2(Cx, Cy);
+    }
 }

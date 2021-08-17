@@ -22,6 +22,13 @@ public class UserObjBase implements INBTSerializable<CompoundNBT> {
         return this.id;
     }
 
+    /**
+     * Only used in some serialization, DON'T CHANGE THE ID!!!
+     */
+    public void setId(int id) {
+        this.id = id;
+    }
+
     @Override
     public CompoundNBT serializeNBT() {
         CompoundNBT nbt = new CompoundNBT();

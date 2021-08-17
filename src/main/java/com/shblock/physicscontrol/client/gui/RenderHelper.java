@@ -253,6 +253,9 @@ public class RenderHelper {
         RenderSystem.disableTexture();
         GL11.glEnable(GL11.GL_LINE_SMOOTH);
         float length = end.sub(start).length();
+        if (length <= 0F) {
+            length = 0.001F;
+        }
         RenderSystem.lineWidth(length * 0.15F);
 
         Tessellator tessellator = Tessellator.getInstance();

@@ -2,6 +2,7 @@ package com.shblock.physicscontrol.physics.util;
 
 import com.shblock.physicscontrol.physics.physics.BodyUserObj;
 import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.FloatNBT;
 import net.minecraft.nbt.INBT;
 import net.minecraft.nbt.ListNBT;
 import net.minecraftforge.common.util.Constants;
@@ -11,6 +12,8 @@ import org.jbox2d.collision.shapes.Shape;
 import org.jbox2d.collision.shapes.ShapeType;
 import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.*;
+
+import java.util.Arrays;
 
 public class NBTSerializer {
     public static CompoundNBT toNBT(Vec2 vec) {
@@ -39,6 +42,23 @@ public class NBTSerializer {
             list[i] = vec2FromNBT(ln.getCompound(i));
         }
         return list;
+    }
+
+    public static INBT toNBT(float[] array) {
+        ListNBT nbt = new ListNBT();
+        for (float f : array) {
+            nbt.add(FloatNBT.valueOf(f));
+        }
+        return nbt;
+    }
+
+    public static float[] floatArrayFromNBT(INBT nbt) {
+        ListNBT list = (ListNBT) nbt;
+        float[] array = new float[list.size()];
+        for (int i=0; i<list.size(); i++) {
+            array[i] = list.getFloat(i);
+        }
+        return array;
     }
 
     public static CompoundNBT toNBT(Filter filter) {
@@ -73,8 +93,8 @@ public class NBTSerializer {
                 PolygonShape poly = (PolygonShape) shape;
                 nbt.put("center", toNBT(poly.m_centroid));
                 nbt.putInt("count", poly.m_count);
-                nbt.put("vertices", toNBT(poly.m_vertices));
-                nbt.put("normals", toNBT(poly.m_normals));
+                nbt.put("vertices", toNBT(Arrays.stream(poly.m_vertices).limit(poly.m_count).toArray(Vec2[]::new)));
+                nbt.put("normals", toNBT(Arrays.stream(poly.m_normals).limit(poly.m_count).toArray(Vec2[]::new)));
                 return nbt;
             default:
                 assert false : shape;

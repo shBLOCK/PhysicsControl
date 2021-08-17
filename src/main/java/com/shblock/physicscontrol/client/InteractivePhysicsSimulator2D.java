@@ -9,6 +9,9 @@ import com.shblock.physicscontrol.physics.util.BodyHelper;
 import com.shblock.physicscontrol.physics.util.NBTSerializer;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.INBT;
+import net.minecraft.nbt.ListNBT;
+import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.common.util.INBTSerializable;
 import org.apache.logging.log4j.Level;
 import org.jbox2d.collision.Collision;
@@ -19,6 +22,7 @@ import org.jbox2d.dynamics.*;
 import java.util.*;
 import java.util.function.Consumer;
 
+// Don't call xxxLocal functions from the Gui code!
 public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundNBT> { //TODO: serialize this instead of space
     private static InteractivePhysicsSimulator2D currentInstance;
 
@@ -108,6 +112,10 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
         }
     }
 
+    public List<Body> getSelectedBodies() {
+        return this.selectedObjects;
+    }
+
     public Body getBodyFromId(int id) {
         return this.idBodyMap.getOrDefault(id, null);
     }
@@ -117,7 +125,6 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
     }
 
     public Body addBodyLocal(BodyDef bodyDef, FixtureDef[] fixtures) {
-//        body.setSleepingAllowed(false);
         Body body = getSpace().createBody(bodyDef);
         assert body.getUserData() instanceof BodyUserObj;
         this.idBodyMap.put(((BodyUserObj) body.getUserData()).getId(), body);
@@ -127,6 +134,18 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
             } catch (AssertionError error) {
                 PhysicsControl.log(Level.WARN, "Failed to create fixture, did you make your polygon too small?");
             }
+        }
+        return body;
+    }
+
+    public Body addBodyLocal(BodyDef bodyDef, CompoundNBT nbt) {
+        Body body = getSpace().createBody(bodyDef);
+        assert body.getUserData() instanceof BodyUserObj;
+        this.idBodyMap.put(((BodyUserObj) body.getUserData()).getId(), body);
+        try {
+            NBTSerializer.applyFixture(body, nbt);
+        } catch (AssertionError e) {
+            PhysicsControl.log(Level.WARN, "Failed to create fixture, did you make your polygon too small?");
         }
         return body;
     }
@@ -151,6 +170,44 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
 
     public void deleteSelected() {
         executeCommand(new CommandDeleteBodies(this.selectedObjects));
+    }
+
+    public CompoundNBT copyBodies(List<Body> bodies, Vec2 mousePos) {
+        CompoundNBT nbt = new CompoundNBT();
+
+        ListNBT list = new ListNBT();
+        for (Body body : bodies) {
+            list.add(NBTSerializer.toNBT(body));
+        }
+        nbt.put("list", list);
+
+        nbt.put("mouse_pos", NBTSerializer.toNBT(mousePos));
+        return nbt;
+    }
+
+    public void pasteBodies(CompoundNBT nbt, Vec2 mousePos) {
+        executeCommand(new CommandPasteBodies(nbt, mousePos));
+    }
+
+
+    public void pasteBodiesLocal(CompoundNBT nbt, Vec2 mousePos) {
+        Vec2 posDelta = mousePos.sub(NBTSerializer.vec2FromNBT(nbt.getCompound("mouse_pos")));
+
+        ListNBT list = nbt.getList("list", Constants.NBT.TAG_COMPOUND);
+        List<BodyDef> bodies = new ArrayList<>();
+        for (int i=0; i<list.size(); i++) {
+            bodies.add(NBTSerializer.bodyFromNBT(list.getCompound(i)));
+        }
+        unselectAll();
+        for (int i=0; i<bodies.size(); i++) {
+            BodyDef body = bodies.get(i);
+            if (body.userData instanceof BodyUserObj) {
+                ((BodyUserObj) body.userData).setId(nextId());
+                body.position.addLocal(posDelta);
+                Body result = addBodyLocal(body, list.getCompound(i));
+                select(result);
+            }
+        }
     }
 
     public void changeZLevel(Body pco, int change) {

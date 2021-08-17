@@ -15,6 +15,7 @@ public class ToolConfig implements INBTSerializable<CompoundNBT> {
     public float giveForceStrength = 1F;
     public boolean giveForceIsStatic = false;
     public float giveForceStaticForce = 10F;
+    public boolean giveForceOnCenter = false;
 
     @Override
     public CompoundNBT serializeNBT() {
@@ -27,6 +28,7 @@ public class ToolConfig implements INBTSerializable<CompoundNBT> {
         nbt.putFloat("giveForceStrength", this.giveForceStrength);
         nbt.putBoolean("giveForceIsStatic", this.giveForceIsStatic);
         nbt.putFloat("giveForceStaticForce", this.giveForceStaticForce);
+        nbt.putBoolean("giveForceOnCenter", this.giveForceOnCenter);
         return nbt;
     }
 
@@ -40,5 +42,6 @@ public class ToolConfig implements INBTSerializable<CompoundNBT> {
         this.giveForceStrength = nbt.getFloat("giveForceStrength");
         this.giveForceIsStatic = nbt.getBoolean("giveForceIsStatic");
         this.giveForceStaticForce = nbt.getFloat("giveForceStaticForce");
+        this.giveForceOnCenter = nbt.getBoolean("giveForceOnCenter");
     }
 }
