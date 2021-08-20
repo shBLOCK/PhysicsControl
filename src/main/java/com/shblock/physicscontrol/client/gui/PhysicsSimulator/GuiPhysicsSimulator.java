@@ -1,6 +1,8 @@
 package com.shblock.physicscontrol.client.gui.PhysicsSimulator;
 
+import codechicken.lib.render.shader.UniformCache;
 import com.mojang.blaze3d.matrix.MatrixStack;
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.shblock.physicscontrol.PhysicsControl;
@@ -25,6 +27,7 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.resources.I18n;
+import net.minecraft.client.shader.Shader;
 import net.minecraft.inventory.container.PlayerContainer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
@@ -35,6 +38,7 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.math.vector.Quaternion;
 import net.minecraft.util.text.StringTextComponent;
+import net.minecraftforge.client.ForgeHooksClient;
 import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.common.util.INBTSerializable;
 import org.apache.logging.log4j.Level;
@@ -47,6 +51,8 @@ import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.*;
 import org.jbox2d.dynamics.joints.MouseJoint;
 import org.jbox2d.dynamics.joints.MouseJointDef;
+import org.jbox2d.particle.ParticleColor;
+import org.jbox2d.particle.ParticleDef;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 
@@ -57,6 +63,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 import static org.lwjgl.glfw.GLFW.*;
@@ -240,6 +247,33 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                     }
                 }
         );
+
+        UniformCache uniform = FluidRender2D.fluidShader.pushCache();
+
+        FluidRender2D.fluidShader.use();
+        FluidRender2D.fluidShader.popCache(uniform);
+
+        RenderSystem.disableTexture();
+        GL11.glPointSize(3);
+        GL11.glEnable(GL11.GL_POINT_SMOOTH);
+
+        Tessellator tessellator = Tessellator.getInstance();
+        BufferBuilder builder = tessellator.getBuilder();
+        builder.begin(GL11.GL_POINTS, DefaultVertexFormats.POSITION_COLOR);
+        Matrix4f matrix = matrixStack.last().pose();
+        for (int i=0; i<space.getParticleCount(); i++) {
+            Vec2 pos = space.getParticlePositionBuffer()[i];
+            ParticleColor color = space.getParticleColorBuffer()[i];
+            builder.vertex(matrix, pos.x, -pos.y, 0F).color(color.r, color.g, color.b, color.a).endVertex();
+        }
+        tessellator.end();
+
+        RenderSystem.enableTexture();
+        GL11.glDisable(GL11.GL_POINT_SMOOTH);
+
+        FluidRender2D.fluidShader.release();
+
+
 
 //        System.out.println(this.lastFrameRenderedBodyCount);
 
@@ -798,6 +832,17 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+        switch (this.currentTool) {
+            case CREATE_PARTICLE:
+                Vec2 pos = toSpacePos(mouseX, mouseY);
+                Random random = new Random();
+                for (int i=0; i<16; i++) {
+                    ParticleDef pd = new ParticleDef();
+                    pd.color = new ParticleColor((byte) 0, (byte) 32, (byte) 255, (byte) 255);
+                    pd.position.set(pos.add(new Vec2((random.nextFloat() - 0.5F) * 3F, (random.nextFloat() - 0.5F) * 3F)));
+                    getSimulator().getSpace().createParticle(pd);
+                }
+        }
         return false;
     }
 
@@ -1212,9 +1257,11 @@ enum Tools {
     DRAW_CIRCLE(0, 0, "physicscontrol.gui.sim.name.sphere", 0),
     DRAW_BOX(1, 0, "physicscontrol.gui.sim.name.box", 0),
     DRAW_POLYGON(2, 0, "physicscontrol.gui.sim.name.polygon", 0),
-    DRAG(0, 1, "physicscontrol.gui.sim.tool.drag", 2),
-    ROTATE(1, 1, "physicscontrol.gui.sim.tool.rotate", 2),
-    GIVE_FORCE(2, 1, "physicscontrol.gui.sim.tool.give_force", 2);
+    CREATE_PARTICLE(0, 3, "physicscontrol.gui.sim.tool.create_particle", 2),
+    DELETE_PARTICLE(1, 3, "physicscontrol.gui.sim.tool.delete_particle", 2),
+    DRAG(0, 1, "physicscontrol.gui.sim.tool.drag", 3),
+    ROTATE(1, 1, "physicscontrol.gui.sim.tool.rotate", 3),
+    GIVE_FORCE(2, 1, "physicscontrol.gui.sim.tool.give_force", 3);
 
     public float u, v;
     public String localizeName;
