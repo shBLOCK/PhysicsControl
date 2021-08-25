@@ -21,6 +21,7 @@ vec2 toSpacePos(vec2 pos) {
 void main() {
     vec2 currentPos = toSpacePos(vec2(gl_FragCoord.x, screenSize.y - gl_FragCoord.y));
     vec4 sum = vec4(0.0);
+    float facSum = 0.0;
     for (int i=0; i<count; i++) {
         vec4 v1 = texelFetch(data, i * TEXEL_PER);
 
@@ -37,17 +38,18 @@ void main() {
         vec2 vel = vec2(v2.zw);
         int flags = int(v3.x);
 
-//        float factor = min(pow(tan(min(distance(pos, currentPos), 1.8) + 1.36), 2.0), 1.0);
-//        float factor = min(pow(min(distance(pos, currentPos) - 2.0, 0.0), 8.0), 1.0);
-//        float factor = smoothstep(0.0, 1.0, ((distance(pos, currentPos) / size) - 2.0) * -1.0);
-        float factor = min(size / distance(pos, currentPos), 1.0);
-//        factor = clamp(factor, 0.0, 1.0);
-        factor = smoothstep(0.5, 1.5, factor);
-//        factor *= smoothstep(0.0, 1.0, factor);
+//        float factor = size / distance(pos, currentPos);
+        float factor = 1.0 - smoothstep(size * 1.0, size * 4.0, distance(pos, currentPos));
+//        factor *= smoothstep(0.5, 1.5, factor);
+        //        factor = smoothstep(1.0, 100.0, factor);
+        facSum += factor;
         sum += col * vec4(factor);
     }
     color = sum;
-    color = clamp(color, 0.0, 1.0);
-//    color = smoothstep(0.45, 0.55, color);
-//    color = smoothstep(0.0, 1.0, color);
+    if (facSum > 1.0) {
+        color /= facSum;
+    } else {
+        color.a *= step(0.8, color.a);
+    }
+//    color = clamp(color, 0.0, 1.0);
 }
