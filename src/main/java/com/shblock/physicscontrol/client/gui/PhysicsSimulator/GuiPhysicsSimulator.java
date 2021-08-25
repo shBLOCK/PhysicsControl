@@ -836,11 +836,11 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
         switch (this.currentTool) {
             case CREATE_PARTICLE:
-                if (button == 0) {
+                if (button == 0 || button == 1) {
                     Vec2 pos = toSpacePos(mouseX, mouseY);
                     for (int i = 0; i < 1; i++) {
                         ParticleDef pd = new ParticleDef();
-                        pd.color = new ParticleColor((byte) -65, (byte) 56, (byte) 76, (byte) 127);
+                        pd.color = button == 0 ? new ParticleColor((byte) -65, (byte) 56, (byte) 76, (byte) 127) : new ParticleColor((byte) 118, (byte) -100, (byte) -100, (byte) 127);
                         pd.position.set(pos);
                         getSimulator().getSpace().createParticle(pd);
                     }
