@@ -195,6 +195,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
         super.render(matrixStack, combinedLight, combinedOverlay, particleTick);
         getSimulator().frame(particleTick);
 
+        FluidRender2D.renderFluid(matrixStack, this.width, this.height, this.globalTranslate, this.globalScale, getSimulator().getSpace());
         renderSpace(matrixStack, getSimulator().getSpace());
 
         drawScaleMeasure(matrixStack);
@@ -248,30 +249,31 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                 }
         );
 
-        UniformCache uniform = FluidRender2D.fluidShader.pushCache();
 
-        FluidRender2D.fluidShader.use();
-        FluidRender2D.fluidShader.popCache(uniform);
-
-        RenderSystem.disableTexture();
-        GL11.glPointSize(3);
-        GL11.glEnable(GL11.GL_POINT_SMOOTH);
-
-        Tessellator tessellator = Tessellator.getInstance();
-        BufferBuilder builder = tessellator.getBuilder();
-        builder.begin(GL11.GL_POINTS, DefaultVertexFormats.POSITION_COLOR);
-        Matrix4f matrix = matrixStack.last().pose();
-        for (int i=0; i<space.getParticleCount(); i++) {
-            Vec2 pos = space.getParticlePositionBuffer()[i];
-            ParticleColor color = space.getParticleColorBuffer()[i];
-            builder.vertex(matrix, pos.x, -pos.y, 0F).color(color.r, color.g, color.b, color.a).endVertex();
-        }
-        tessellator.end();
-
-        RenderSystem.enableTexture();
-        GL11.glDisable(GL11.GL_POINT_SMOOTH);
-
-        FluidRender2D.fluidShader.release();
+//        UniformCache uniform = FluidRender2D.fluidShader.pushCache();
+//
+//        FluidRender2D.fluidShader.use();
+//        FluidRender2D.fluidShader.popCache(uniform);
+//
+//        RenderSystem.disableTexture();
+//        GL11.glPointSize(3);
+//        GL11.glEnable(GL11.GL_POINT_SMOOTH);
+//
+//        Tessellator tessellator = Tessellator.getInstance();
+//        BufferBuilder builder = tessellator.getBuilder();
+//        builder.begin(GL11.GL_POINTS, DefaultVertexFormats.POSITION_COLOR);
+//        Matrix4f matrix = matrixStack.last().pose();
+//        for (int i=0; i<space.getParticleCount(); i++) {
+//            Vec2 pos = space.getParticlePositionBuffer()[i];
+//            ParticleColor color = space.getParticleColorBuffer()[i];
+//            builder.vertex(matrix, pos.x, -pos.y, 0F).color(color.r, color.g, color.b, color.a).endVertex();
+//        }
+//        tessellator.end();
+//
+//        RenderSystem.enableTexture();
+//        GL11.glDisable(GL11.GL_POINT_SMOOTH);
+//
+//        FluidRender2D.fluidShader.release();
 
 
 
@@ -834,14 +836,17 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
         switch (this.currentTool) {
             case CREATE_PARTICLE:
-                Vec2 pos = toSpacePos(mouseX, mouseY);
-                Random random = new Random();
-                for (int i=0; i<16; i++) {
-                    ParticleDef pd = new ParticleDef();
-                    pd.color = new ParticleColor((byte) 0, (byte) 32, (byte) 255, (byte) 255);
-                    pd.position.set(pos.add(new Vec2((random.nextFloat() - 0.5F) * 3F, (random.nextFloat() - 0.5F) * 3F)));
-                    getSimulator().getSpace().createParticle(pd);
+                if (button == 0) {
+                    Vec2 pos = toSpacePos(mouseX, mouseY);
+                    for (int i = 0; i < 1; i++) {
+                        ParticleDef pd = new ParticleDef();
+                        pd.color = new ParticleColor((byte) -65, (byte) 56, (byte) 76, (byte) 127);
+                        pd.position.set(pos);
+                        getSimulator().getSpace().createParticle(pd);
+                    }
+                    return true;
                 }
+                return false;
         }
         return false;
     }
@@ -1082,6 +1087,12 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
             case GLFW_KEY_LEFT_SHIFT:
             case GLFW_KEY_RIGHT_SHIFT:
                 mouseMoved(currentMouseX, currentMouseY); // to update the drawing or rotating when the mouse didn't move
+                return true;
+
+
+            case GLFW_KEY_R:
+                PhysicsControl.log("reload shader");
+                FluidRender2D.loadShader();
                 return true;
         }
         return false;
