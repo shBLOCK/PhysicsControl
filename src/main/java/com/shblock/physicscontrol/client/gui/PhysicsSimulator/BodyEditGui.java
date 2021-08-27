@@ -231,7 +231,7 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
         this.displayMainWindow = nbt.getBoolean("display_main_window");
         this.bodyId = nbt.getInt("body_id");
         this.modules.clear();
-//        FIXME: fix the crash bug and re enable this part
+//        FIXME: fix the crash bug and then re enable this part
 //        ListNBT list = nbt.getList("modules", Constants.NBT.TAG_COMPOUND);
 //        for (int i=0; i<list.size(); i++) {
 //            int guiId = GuiPhysicsSimulator.tryGetInstance().getNextGuiId();

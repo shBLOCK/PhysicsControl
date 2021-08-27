@@ -12,6 +12,8 @@ import org.jbox2d.collision.shapes.Shape;
 import org.jbox2d.collision.shapes.ShapeType;
 import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.*;
+import org.jbox2d.particle.ParticleColor;
+import org.jbox2d.particle.ParticleDef;
 
 import java.util.Arrays;
 
@@ -265,6 +267,66 @@ public class NBTSerializer {
         return list;
     }
 
+    public static CompoundNBT toNBT(ParticleColor particleColor) {
+        CompoundNBT nbt = new CompoundNBT();
+        nbt.putByte("r", particleColor.r);
+        nbt.putByte("g", particleColor.g);
+        nbt.putByte("b", particleColor.b);
+        nbt.putByte("a", particleColor.a);
+        return nbt;
+    }
+
+    public static ParticleColor particleColorFromNBT(CompoundNBT nbt) {
+        return new ParticleColor(
+                nbt.getByte("r"),
+                nbt.getByte("g"),
+                nbt.getByte("b"),
+                nbt.getByte("a")
+        );
+    }
+
+    public static CompoundNBT toNBT(ParticleDef particleDef) {
+        CompoundNBT nbt = new CompoundNBT();
+        nbt.putInt("flags", particleDef.flags);
+        nbt.put("pos", toNBT(particleDef.position));
+        nbt.put("vel", toNBT(particleDef.velocity));
+        nbt.put("color", toNBT(particleDef.color));
+        return nbt;
+    }
+
+    public static ParticleDef particleDefFromNBT(CompoundNBT nbt) {
+        ParticleDef def = new ParticleDef();
+        def.flags = nbt.getInt("flags");
+        def.position.set(vec2FromNBT(nbt.getCompound("pos")));
+        def.velocity.set(vec2FromNBT(nbt.getCompound("vel")));
+        def.color = particleColorFromNBT(nbt.getCompound("color"));
+        return def;
+    }
+
+    public static CompoundNBT saveParticles(World world) {
+        CompoundNBT nbt = new CompoundNBT();
+
+        ListNBT list = new ListNBT();
+        ParticleDef tmp = new ParticleDef();
+        for (int i=0; i<world.getParticleCount(); i++) {
+            tmp.flags = world.getParticleFlagsBuffer()[i];
+            tmp.position.set(world.getParticlePositionBuffer()[i]);
+            tmp.velocity.set(world.getParticleVelocityBuffer()[i]);
+            tmp.color = world.getParticleColorBuffer()[i];
+            list.add(toNBT(tmp));
+        }
+        nbt.put("list", list);
+
+        return nbt;
+    }
+
+    public static void loadParticles(World world, CompoundNBT nbt) {
+        ListNBT list = nbt.getList("list", Constants.NBT.TAG_COMPOUND);
+        for (int i=0; i<list.size(); i++) {
+            world.createParticle(particleDefFromNBT(list.getCompound(i)));
+        }
+    }
+
     public static CompoundNBT toNBT(World space) {
         CompoundNBT nbt = new CompoundNBT();
         nbt.put("gravity", toNBT(space.getGravity()));
@@ -273,9 +335,15 @@ public class NBTSerializer {
         nbt.putBoolean("continuous_physics", space.isContinuousPhysics());
         nbt.putBoolean("warm_starting", space.isWarmStarting());
         nbt.putBoolean("sub_stepping", space.isSubStepping());
+        nbt.putFloat("particle_radius", space.getParticleRadius());
+        nbt.putFloat("particle_density", space.getParticleDensity());
+        nbt.putFloat("particle_damping", space.getParticleDamping());
+        nbt.putFloat("particle_gravity_scale", space.getParticleGravityScale());
 
         nbt.put("body_list", bodyListToNBT(space.getBodyList()));
-        //TODO: joint
+
+        nbt.put("particles", saveParticles(space));
+        //TODO: particle groups
         return nbt;
     }
 
@@ -287,6 +355,10 @@ public class NBTSerializer {
         space.setContinuousPhysics(nbt.getBoolean("continuous_physics"));
         space.setWarmStarting(nbt.getBoolean("warm_starting"));
         space.setSubStepping(nbt.getBoolean("sub_stepping"));
+        space.setParticleRadius(nbt.getFloat("particle_radius"));
+        space.setParticleDensity(nbt.getFloat("particle_density"));
+        space.setParticleDamping(nbt.getFloat("particle_damping"));
+        space.setParticleGravityScale(nbt.getFloat("particle_gravity_scale"));
 
         ListNBT list = nbt.getCompound("body_list").getList("list", Constants.NBT.TAG_COMPOUND);
         BodyDef[] defs = bodyListFromNBT(nbt.getCompound("body_list"));
@@ -294,7 +366,9 @@ public class NBTSerializer {
             Body result = space.createBody(defs[i]);
             applyFixture(result, list.getCompound(i));
         }
-        //TODO: joint
+
+        loadParticles(space, nbt.getCompound("particles"));
+        //TODO: particle groups
         return space;
     }
 

@@ -8,7 +8,7 @@ public class ParticleDef {
      * chained by logical sums, for example: pd.flags = ParticleType.b2_elasticParticle |
      * ParticleType.b2_viscousParticle.
      */
-    int flags;
+    public int flags;
 
     /**
      * The world position of the particle.

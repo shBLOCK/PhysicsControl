@@ -3,7 +3,6 @@ package com.shblock.physicscontrol.client.gui.PhysicsSimulator;
 import codechicken.lib.render.shader.ShaderProgram;
 import codechicken.lib.render.shader.ShaderProgramBuilder;
 import codechicken.lib.render.shader.UniformType;
-import com.mojang.blaze3d.matrix.MatrixStack;
 import com.shblock.physicscontrol.PhysicsControl;
 import com.shblock.physicscontrol.physics.util.AABBHelper;
 import net.minecraft.client.MainWindow;
@@ -15,16 +14,15 @@ import org.jbox2d.collision.AABB;
 import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.World;
 import org.jbox2d.particle.ParticleColor;
+import org.jbox2d.particle.ParticleType;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.function.Predicate;
 
 import static codechicken.lib.render.shader.ShaderObject.StandardShaderType.FRAGMENT;
 import static org.lwjgl.opengl.GL43.*;
 
-public class FluidRender2D {
+public class ParticleRender2D {
     private static final int RGBA_PER_PARTICLE = 3; // How many RGBA pixel it takes to represent the data of one particle
     public static int MAX_COUNT = 65536;
     private static final float FILTER_AABB_SIZE = 1F;
@@ -36,7 +34,7 @@ public class FluidRender2D {
 
     private static ISelectiveResourceReloadListener shaderReloadHandler =
             (resourceManager, resourcePredicate) -> {
-        PhysicsControl.log("Reloading fluid shader...");
+        PhysicsControl.log("Reloading particle shader...");
         loadShader();
     };
 
@@ -51,7 +49,7 @@ public class FluidRender2D {
         fluidShader = ShaderProgramBuilder.builder()
                 .addShader("frag", shader -> shader
                         .type(FRAGMENT)
-                        .source(new ResourceLocation(PhysicsControl.MODID, "shaders/fluid.frag"))
+                        .source(new ResourceLocation(PhysicsControl.MODID, "shaders/particles.frag"))
                         .uniform("count", UniformType.U_INT)
                         .uniform("size", UniformType.FLOAT)
                         .uniform("translate", UniformType.VEC2)
@@ -72,9 +70,8 @@ public class FluidRender2D {
         glBindTexture(GL_TEXTURE_BUFFER, 0);
     }
 
-    public static void renderFluid(MatrixStack matrixStack, int screenWidth, int screenHeight, Vec2 translate, float scale, World world) {
-        renderFluid(
-                matrixStack,
+    public static void render(int screenWidth, int screenHeight, Vec2 translate, float scale, World world, SimulatorConfig config) {
+        render(
                 screenWidth,
                 screenHeight,
                 translate,
@@ -84,17 +81,18 @@ public class FluidRender2D {
                 world.getParticlePositionBuffer(),
                 world.getParticleVelocityBuffer(),
                 world.getParticleColorBuffer(),
-                world.getParticleFlagsBuffer()
+                world.getParticleFlagsBuffer(),
+                config
         );
     }
 
-    private static float[] genFluidRenderData(int count, float particleSize, Vec2[] position, Vec2[] velocity, ParticleColor[] color, int[] flags, Predicate<Vec2> filter) {
+    private static float[] genRenderData(int count, float particleSize, Vec2[] position, Vec2[] velocity, ParticleColor[] color, int[] flags, Predicate<Vec2> filter) {
         int dataPerP = 4 * RGBA_PER_PARTICLE;
         float[] data = new float[dataPerP * count];
         int cnt = 0;
         int i = 0;
         while (i<Math.min(count, MAX_COUNT)) {
-            if (filter.test(position[i])) {
+            if (filter.test(position[i]) && ((flags[i] & ParticleType.b2_zombieParticle) == 0)) {
                 data[dataPerP * cnt] = position[i].x;
                 data[dataPerP * cnt + 1] = position[i].y;
 
@@ -115,7 +113,7 @@ public class FluidRender2D {
         return Arrays.copyOfRange(data, 0, cnt * dataPerP);
     }
 
-    public static void renderFluid(MatrixStack matrixStack, int screenWidth, int screenHeight, Vec2 translate, float scale, int count, float particleSize, Vec2[] position, Vec2[] velocity, ParticleColor[] color, int[] flags) {
+    public static void render(int screenWidth, int screenHeight, Vec2 translate, float scale, int count, float particleSize, Vec2[] position, Vec2[] velocity, ParticleColor[] color, int[] flags, SimulatorConfig config) {
         Vec2 lower = new Vec2(
                 (-translate.x) / scale,
                 (-translate.y) / scale
@@ -135,6 +133,7 @@ public class FluidRender2D {
             shader = fluidShader.getProgramId();
         }
         glUseProgram(shader);
+
         glUniform1f(glGetUniformLocation(shader, "size"), particleSize);
         MainWindow window = Minecraft.getInstance().getWindow();
         glUniform2f(glGetUniformLocation(shader, "screenSize"), window.getScreenWidth(), window.getScreenHeight()   );
@@ -143,7 +142,7 @@ public class FluidRender2D {
         glUniform1f(glGetUniformLocation(shader, "scale"), scale * guiScale);
         glBindBuffer(GL_TEXTURE_BUFFER, tbo);
         AABB screenBB = new AABB(lower, upper);
-        float[] data = genFluidRenderData(count, particleSize, position, velocity, color, flags, pos -> {
+        float[] data = genRenderData(count, particleSize, position, velocity, color, flags, pos -> {
             Vec2 p = pos.clone();
             p.y = -p.y;
             return AABBHelper.isOverlapping2D(screenBB, new AABB(p.sub(new Vec2(FILTER_AABB_SIZE, FILTER_AABB_SIZE)), p.add(new Vec2(FILTER_AABB_SIZE, FILTER_AABB_SIZE))));
@@ -156,6 +155,11 @@ public class FluidRender2D {
         glBindTexture(GL_TEXTURE_BUFFER, tex);
         glUniform1i(glGetUniformLocation(shader, "data"), 0);
         glUniform1ui(glGetUniformLocation(shader, "count"), data.length / (4 * RGBA_PER_PARTICLE)); //TODO: improve this way to get the render count
+
+        glUniform1f(glGetUniformLocation(shader, "smoothLower"), config.particleRenderSmoothLowerBound);
+        glUniform1f(glGetUniformLocation(shader, "smoothUpper"), config.particleRenderSmoothUpperBound);
+        glUniform1f(glGetUniformLocation(shader, "borderLower"), config.particleRenderBorderLowerBound);
+        glUniform1f(glGetUniformLocation(shader, "borderUpper"), config.particleRenderBorderUpperBound);
 
         glBegin(GL_QUADS);
         glColor4f(1F, 1F, 1F, 1F);

@@ -54,5 +54,8 @@ public class CommandSerializer {
         register(CommandRotateBody.class);
         register(CommandGiveForce.class);
         register(CommandPasteBodies.class);
+        register(CommandCreateParticles.class);
+        register(CommandEditParticles.class);
+        register(CommandDeleteParticles.class);
     }
 }

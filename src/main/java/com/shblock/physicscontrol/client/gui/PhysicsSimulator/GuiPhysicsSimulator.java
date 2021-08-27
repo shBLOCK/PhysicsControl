@@ -1,10 +1,6 @@
 package com.shblock.physicscontrol.client.gui.PhysicsSimulator;
 
-import codechicken.lib.render.shader.UniformCache;
 import com.mojang.blaze3d.matrix.MatrixStack;
-import com.mojang.blaze3d.platform.GlStateManager;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.shblock.physicscontrol.PhysicsControl;
 import com.shblock.physicscontrol.client.I18nHelper;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
@@ -15,30 +11,16 @@ import com.shblock.physicscontrol.command.*;
 import com.shblock.physicscontrol.physics.physics.BodyUserObj;
 import com.shblock.physicscontrol.physics.util.*;
 import imgui.ImGui;
-import net.minecraft.block.Blocks;
-import net.minecraft.client.ClipboardHelper;
 import net.minecraft.client.KeyboardListener;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.renderer.BufferBuilder;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.texture.AtlasTexture;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.renderer.texture.TextureManager;
-import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.resources.I18n;
-import net.minecraft.client.shader.Shader;
-import net.minecraft.inventory.container.PlayerContainer;
-import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.JsonToNBT;
 import net.minecraft.nbt.ListNBT;
 import net.minecraft.util.ColorHelper;
-import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.math.vector.Quaternion;
 import net.minecraft.util.text.StringTextComponent;
-import net.minecraftforge.client.ForgeHooksClient;
 import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.common.util.INBTSerializable;
 import org.apache.logging.log4j.Level;
@@ -46,24 +28,18 @@ import org.jbox2d.collision.AABB;
 import org.jbox2d.collision.shapes.CircleShape;
 import org.jbox2d.collision.shapes.PolygonShape;
 import org.jbox2d.collision.shapes.Shape;
-import org.jbox2d.common.Settings;
 import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.*;
 import org.jbox2d.dynamics.joints.MouseJoint;
 import org.jbox2d.dynamics.joints.MouseJointDef;
 import org.jbox2d.particle.ParticleColor;
 import org.jbox2d.particle.ParticleDef;
-import org.lwjgl.glfw.GLFW;
-import org.lwjgl.opengl.GL11;
-
-import javax.annotation.Nullable;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Random;
 import java.util.stream.Collectors;
 
 import static org.lwjgl.glfw.GLFW.*;
@@ -91,8 +67,10 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
     private Vec2 applyForceLocalPoint = null;
     private Vec2 applyForceVec = null;
 
-    private ToolConfig toolConfig = new ToolConfig();
+    private SimulatorConfig config = new SimulatorConfig();
     private ToolEditGui toolEditGui;
+    private ParticleToolGui particleToolGui;
+    private int lastParticleToolMouseButton;
 
     private int currentGuiId = "gui".hashCode();
     private final List<BodyEditGui> bodyEditGuis = new ArrayList<>();
@@ -111,6 +89,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
         } catch (Exception | AssertionError e) {
             PhysicsControl.log(Level.WARN, "Autoload failed!");
             e.printStackTrace();
+            newSpace();
         }
     }
 
@@ -126,7 +105,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
 
         draggingJoint = null;
 
-        toolConfig = new ToolConfig();
+        config = new SimulatorConfig();
         toolEditGui = null;
 
         currentGuiId = "gui".hashCode();
@@ -195,13 +174,25 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
         super.render(matrixStack, combinedLight, combinedOverlay, particleTick);
         getSimulator().frame(particleTick);
 
-        FluidRender2D.renderFluid(matrixStack, this.width, this.height, this.globalTranslate, this.globalScale, getSimulator().getSpace());
+        ParticleRender2D.render(this.width, this.height, this.globalTranslate, this.globalScale, getSimulator().getSpace(), this.config);
         renderSpace(matrixStack, getSimulator().getSpace());
 
         drawScaleMeasure(matrixStack);
 
         for (BodyEditGui gui : this.bodyEditGuis) {
             gui.render(matrixStack);
+        }
+
+        if (this.state == State.DRAW_PARTICLES) {
+            int operation = -1;
+            if (this.lastParticleToolMouseButton == 0) {
+                operation = hasAltDown() ? ParticleToolGui.EDIT : ParticleToolGui.CREATE;
+            } else if (this.lastParticleToolMouseButton == 1) {
+                operation = ParticleToolGui.DELETE;
+            }
+            if (operation != -1) {
+                this.particleToolGui.execute(this, getSimulator(), toSpacePos(currentMouseX, currentMouseY), operation, this.config);
+            }
         }
     }
 
@@ -249,34 +240,6 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                 }
         );
 
-
-//        UniformCache uniform = FluidRender2D.fluidShader.pushCache();
-//
-//        FluidRender2D.fluidShader.use();
-//        FluidRender2D.fluidShader.popCache(uniform);
-//
-//        RenderSystem.disableTexture();
-//        GL11.glPointSize(3);
-//        GL11.glEnable(GL11.GL_POINT_SMOOTH);
-//
-//        Tessellator tessellator = Tessellator.getInstance();
-//        BufferBuilder builder = tessellator.getBuilder();
-//        builder.begin(GL11.GL_POINTS, DefaultVertexFormats.POSITION_COLOR);
-//        Matrix4f matrix = matrixStack.last().pose();
-//        for (int i=0; i<space.getParticleCount(); i++) {
-//            Vec2 pos = space.getParticlePositionBuffer()[i];
-//            ParticleColor color = space.getParticleColorBuffer()[i];
-//            builder.vertex(matrix, pos.x, -pos.y, 0F).color(color.r, color.g, color.b, color.a).endVertex();
-//        }
-//        tessellator.end();
-//
-//        RenderSystem.enableTexture();
-//        GL11.glDisable(GL11.GL_POINT_SMOOTH);
-//
-//        FluidRender2D.fluidShader.release();
-
-
-
 //        System.out.println(this.lastFrameRenderedBodyCount);
 
         switch (this.state) {
@@ -296,6 +259,12 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
 
         for (BodyEditGui gui : this.bodyEditGuis) {
             gui.renderSpace(matrixStack);
+        }
+
+        if (this.currentTool == Tools.PARTICLE && this.particleToolGui != null) {
+            Vec2 pos = toSpacePos(currentMouseX, currentMouseY);
+            pos.y = -pos.y;
+            this.particleToolGui.render(matrixStack, pos, this.config);
         }
 
         matrixStack.popPose();
@@ -412,7 +381,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
         start.y = -start.y;
         Matrix4f matrix = matrixStack.last().pose();
 
-        float scale = 1 / this.globalScale / toolConfig.giveForceStrength;
+        float scale = 1 / this.globalScale / config.giveForceStrength;
         Vec2 temp = this.applyForceVec.clone();
         temp.y = -temp.y;
         RenderHelper.drawArrow(matrix, start, start.add(temp.mul(scale)), 1F, 1F, 1F, 0.8F);
@@ -425,11 +394,11 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
         Vec2 mpWorld = toSpacePos(mp);
         Vec2 startPointWorldPos = this.applyForceBody.getWorldPoint(this.applyForceLocalPoint);
         Vec2 startPointScreenPos = toScreenPos(startPointWorldPos);
-        this.applyForceVec = startPointScreenPos.sub(mp).mul(toolConfig.giveForceStrength);
+        this.applyForceVec = startPointScreenPos.sub(mp).mul(config.giveForceStrength);
         this.applyForceVec.x = -this.applyForceVec.x;
-        if (toolConfig.giveForceIsStatic) {
+        if (config.giveForceIsStatic) {
             this.applyForceVec.normalize();
-            this.applyForceVec.mulLocal(toolConfig.giveForceStaticForce);
+            this.applyForceVec.mulLocal(config.giveForceStaticForce);
         }
 
         if (hasShiftDown()) {
@@ -471,9 +440,16 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
         }
 
         if (this.toolEditGui != null) {
-            if (!this.toolEditGui.buildImGui(this.toolConfig)) {
+            if (!this.toolEditGui.buildImGui(this.config)) {
                 this.toolEditGui = null;
             }
+        }
+
+        if (this.currentTool == Tools.PARTICLE) {
+            if (this.particleToolGui == null) {
+                this.particleToolGui = new ParticleToolGui();
+            }
+            this.particleToolGui.buildImGui(this.config);
         }
     }
 
@@ -701,12 +677,26 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                 case GIVE_FORCE:
                     // Updated in updateGiveForce()
                     return;
+//                case DRAW_PARTICLES:
+//                    if (this.lastParticleToolMouseButton != 1) {
+//                        this.particleToolGui.execute(this, getSimulator(), toSpacePos(mouseX, mouseY), this.lastParticleToolMouseButton, this.config, false);
+//                    }
+//                    return;
             }
         }
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (this.currentTool == Tools.PARTICLE) {
+            if (button == 0 || button == 1) {
+                this.state = State.DRAW_PARTICLES;
+                this.lastParticleToolMouseButton = button;
+//                this.particleToolGui.execute(this, getSimulator(), toSpacePos(mouseX, mouseY), this.lastParticleToolMouseButton, this.config, true);
+                return true;
+            }
+        }
+
         switch (button) {
             case 0:
                 switch (this.state) {
@@ -746,7 +736,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
 
                                     getSimulator().executeCommand(new CommandDragBody(null));
 
-                                    if (this.toolConfig.dragToolDragCenter) {
+                                    if (this.config.dragToolDragCenter) {
                                         getSimulator().setBodyPosLocal(results.get(0), pos);
                                     }
 
@@ -754,12 +744,12 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                                     jointDef.bodyA = getSimulator().getSpace().createBody(new BodyDef());
                                     jointDef.bodyB = results.get(0);
                                     jointDef.target.set(pos);
-                                    jointDef.maxForce = this.toolConfig.dragToolMaxForce;
-                                    jointDef.dampingRatio = this.toolConfig.dragToolDampingRatio;
-                                    jointDef.frequencyHz = this.toolConfig.dragToolFrequency;
+                                    jointDef.maxForce = this.config.dragToolMaxForce;
+                                    jointDef.dampingRatio = this.config.dragToolDampingRatio;
+                                    jointDef.frequencyHz = this.config.dragToolFrequency;
                                     jointDef.collideConnected = true;
 
-                                    if (this.toolConfig.dragToolDisableRotation) {
+                                    if (this.config.dragToolDisableRotation) {
                                         results.get(0).setAngularVelocity(0F);
                                         results.get(0).setFixedRotation(true);
                                     }
@@ -801,7 +791,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                                     if (objs.get(0).getType() == BodyType.DYNAMIC) {
                                         this.state = State.GIVE_FORCE;
                                         this.applyForceBody = objs.get(0);
-                                        this.applyForceLocalPoint = this.toolConfig.giveForceOnCenter ? new Vec2() : applyForceBody.getLocalPoint(mp);
+                                        this.applyForceLocalPoint = this.config.giveForceOnCenter ? new Vec2() : applyForceBody.getLocalPoint(mp);
                                         this.applyForceVec = new Vec2();
                                         return true;
                                     }
@@ -829,30 +819,38 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                 }
                 return false;
         }
+
         return false;
     }
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
-        switch (this.currentTool) {
-            case CREATE_PARTICLE:
-                if (button == 0 || button == 1) {
-                    Vec2 pos = toSpacePos(mouseX, mouseY);
-                    for (int i = 0; i < 1; i++) {
-                        ParticleDef pd = new ParticleDef();
-                        pd.color = button == 0 ? new ParticleColor((byte) -65, (byte) 56, (byte) 76, (byte) 127) : new ParticleColor((byte) 118, (byte) -100, (byte) -100, (byte) 127);
-                        pd.position.set(pos);
-                        getSimulator().getSpace().createParticle(pd);
-                    }
-                    return true;
-                }
-                return false;
-        }
+//        switch (this.currentTool) {
+//            case PARTICLE:
+//                if (button == 0 || button == 1) {
+//                    Vec2 pos = toSpacePos(mouseX, mouseY);
+//                    for (int i = 0; i < 1; i++) {
+//                        ParticleDef pd = new ParticleDef();
+//                        pd.color = button == 0 ? new ParticleColor((byte) -65, (byte) 56, (byte) 76, (byte) 127) : new ParticleColor((byte) 118, (byte) -100, (byte) -100, (byte) 127);
+//                        pd.position.set(pos);
+//                        getSimulator().getSpace().createParticle(pd);
+//                    }
+//                    return true;
+//                }
+//                return false;
+//        }
         return false;
     }
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (this.state == State.DRAW_PARTICLES) {
+            if (button == this.lastParticleToolMouseButton) {
+                this.state = State.NONE;
+                return true;
+            }
+        }
+
         switch (button) {
             case 0:
                 switch (this.state) {
@@ -953,7 +951,14 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
         if (hasShiftDown()) {
-            if (getSimulator().isPointOnAnySelected(toSpacePos(mouseX, mouseY))) {
+            if (this.currentTool == Tools.PARTICLE) {
+                this.config.particleToolSize += delta * 0.2F;
+                if (config.particleToolSize > 10F) {
+                    config.particleToolSize = 10F;
+                } else if (config.particleToolSize < 0.1F) {
+                    config.particleToolSize = 0.1F;
+                }
+            } else if (getSimulator().isPointOnAnySelected(toSpacePos(mouseX, mouseY))) {
                 if (delta > 0) {
                     getSimulator().changeSelectedZLevel(1);
                 } else {
@@ -1092,7 +1097,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
 
             case GLFW_KEY_R:
                 PhysicsControl.log("reload shader");
-                FluidRender2D.loadShader();
+                ParticleRender2D.loadShader();
                 return true;
         }
         return false;
@@ -1216,7 +1221,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
         nbt.putFloat("scale_speed", this.scaleSpeed);
         nbt.put("global_translate", NBTSerializer.toNBT(this.globalTranslate));
         nbt.putInt("current_tool", this.currentTool.ordinal());
-        nbt.put("tool_config", this.toolConfig.serializeNBT());
+        nbt.put("config", this.config.serializeNBT());
 
         ListNBT guiList = new ListNBT();
         for (BodyEditGui gui : this.bodyEditGuis) {
@@ -1237,6 +1242,8 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
         this.state = State.NONE;
         this.drawingShape = null;
         this.currentTool = Tools.values()[nbt.getInt("current_tool")];
+        this.config = new SimulatorConfig();
+        this.config.deserializeNBT(nbt.getCompound("config"));
         this.toolEditGui = null;
         this.currentGuiId = "gui".hashCode();
 
@@ -1257,7 +1264,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
 }
 
 enum State {
-    NONE, MOVING, DRAW, DRAG, ROTATE, GIVE_FORCE
+    NONE, MOVING, DRAW, DRAG, ROTATE, GIVE_FORCE, DRAW_PARTICLES
 }
 
 enum DrawShapes {
@@ -1268,8 +1275,7 @@ enum Tools {
     DRAW_CIRCLE(0, 0, "physicscontrol.gui.sim.name.sphere", 0),
     DRAW_BOX(1, 0, "physicscontrol.gui.sim.name.box", 0),
     DRAW_POLYGON(2, 0, "physicscontrol.gui.sim.name.polygon", 0),
-    CREATE_PARTICLE(0, 3, "physicscontrol.gui.sim.tool.create_particle", 2),
-    DELETE_PARTICLE(1, 3, "physicscontrol.gui.sim.tool.delete_particle", 2),
+    PARTICLE(0, 3, "physicscontrol.gui.sim.tool.particle", 2),
     DRAG(0, 1, "physicscontrol.gui.sim.tool.drag", 3),
     ROTATE(1, 1, "physicscontrol.gui.sim.tool.rotate", 3),
     GIVE_FORCE(2, 1, "physicscontrol.gui.sim.tool.give_force", 3);

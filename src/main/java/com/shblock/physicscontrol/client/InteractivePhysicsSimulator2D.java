@@ -18,6 +18,7 @@ import org.jbox2d.collision.Collision;
 import org.jbox2d.collision.shapes.Shape;
 import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.*;
+import org.jbox2d.particle.ParticleDef;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -62,6 +63,7 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
         this.space.setContactListener(GuiSimulatorContactListener.getInstance());
         this.space.setSleepingAllowed(false);
         this.space.setAllowSleep(false);
+        this.space.setParticleRadius(0.25F);
     }
 
     public void close() {
@@ -246,6 +248,14 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
         for (Body body : this.selectedObjects) {
             unfreezeBody(body);
         }
+    }
+
+    public void addParticleLocal(ParticleDef def) {
+        getSpace().createParticle(def);
+    }
+
+    public void deleteParticleLocal(int index) {
+        getSpace().destroyParticle(index);
     }
 
     public List<Body> pointTest(Vec2 point) {

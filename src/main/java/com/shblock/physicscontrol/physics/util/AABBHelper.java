@@ -15,4 +15,8 @@ public class AABBHelper {
     public static boolean isOverlapping2D(AABB a, AABB b) {
         return isHigherInAllAxis(a.upperBound, b.lowerBound) && isLowerInAllAxis(a.lowerBound, b.upperBound);
     }
+
+    public static boolean isPointIn(Vec2 point, AABB aabb) {
+        return isHigherInAllAxis(point, aabb.lowerBound) && isLowerInAllAxis(point, aabb.upperBound);
+    }
 }

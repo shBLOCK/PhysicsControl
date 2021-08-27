@@ -26,7 +26,7 @@ public class ToolEditGui {
         return ImGui.beginPopup("##tool_edit_gui");
     }
 
-    public boolean buildImGui(ToolConfig config) {
+    public boolean buildImGui(SimulatorConfig config) {
         switch (this.tool) {
             case DRAG:
                 if (startPopup()) {
