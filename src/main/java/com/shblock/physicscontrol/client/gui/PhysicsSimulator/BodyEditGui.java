@@ -1,5 +1,6 @@
 package com.shblock.physicscontrol.client.gui.PhysicsSimulator;
 
+import com.google.common.collect.Lists;
 import com.mojang.blaze3d.matrix.MatrixStack;
 import com.shblock.physicscontrol.Config;
 import com.shblock.physicscontrol.PhysicsControl;
@@ -7,10 +8,12 @@ import com.shblock.physicscontrol.client.I18nHelper;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
 import com.shblock.physicscontrol.client.gui.GlobalImGuiRenderer;
 import com.shblock.physicscontrol.client.gui.RenderHelper;
+import com.shblock.physicscontrol.command.CommandBodyToElastic;
+import com.shblock.physicscontrol.command.CommandDeleteBodies;
 import com.shblock.physicscontrol.command.CommandEditBodyProperty;
 import com.shblock.physicscontrol.command.EditOperations2D;
 import com.shblock.physicscontrol.physics.material.Material;
-import com.shblock.physicscontrol.physics.physics.BodyUserObj;
+import com.shblock.physicscontrol.physics.user_obj.BodyUserObj;
 import com.shblock.physicscontrol.physics.util.NBTSerializer;
 import com.shblock.physicscontrol.physics.util.ShapeHelper;
 import imgui.ImColor;
@@ -23,7 +26,6 @@ import imgui.type.ImBoolean;
 import imgui.type.ImFloat;
 import imgui.type.ImString;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.SimpleTexture;
 import net.minecraft.client.renderer.texture.Texture;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.resources.I18n;
@@ -96,6 +98,10 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
                         }
                         if (shouldBuildModule) {
                             module.build(this, body, obj);
+                            if (InteractivePhysicsSimulator2D.getInstance().getBodyFromId(this.bodyId) == null) {
+                                ImGui.end();
+                                return false;
+                            }
                             ImGui.separator();
                         }
                     }
@@ -269,7 +275,12 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
             ImGui.image(ICON, 16F, 16F, 0F, 0.9375F, 0.0625F, 1F);
             ImGui.sameLine();
             if (ImGui.menuItem(I18n.get("physicscontrol.gui.sim.edit.module.tools.delete"))) {
-                getSimulator().deleteBodyLocal(body);
+                getSimulator().executeCommand(new CommandDeleteBodies(Lists.newArrayList(body)));
+            }
+
+            // To Elastic
+            if (ImGui.menuItem(I18n.get("physicscontrol.gui.sim.edit.module.tools.to_elastic"))) {
+                getSimulator().executeCommand(new CommandBodyToElastic(body));
             }
         }
 

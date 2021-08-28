@@ -2,17 +2,13 @@ package com.shblock.physicscontrol.command;
 
 import com.shblock.physicscontrol.client.I18nHelper;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
-import com.shblock.physicscontrol.physics.physics.BodyUserObj;
 import com.shblock.physicscontrol.physics.util.NBTSerializer;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.nbt.INBT;
 import net.minecraft.nbt.ListNBT;
 import net.minecraftforge.common.util.Constants;
 import org.jbox2d.collision.shapes.Shape;
-import org.jbox2d.dynamics.Body;
 import org.jbox2d.dynamics.BodyDef;
-import org.jbox2d.dynamics.Fixture;
 import org.jbox2d.dynamics.FixtureDef;
 
 import java.util.ArrayList;

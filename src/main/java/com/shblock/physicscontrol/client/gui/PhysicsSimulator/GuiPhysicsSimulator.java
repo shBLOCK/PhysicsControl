@@ -8,7 +8,8 @@ import com.shblock.physicscontrol.client.gui.GlobalImGuiRenderer;
 import com.shblock.physicscontrol.client.gui.ImGuiBase;
 import com.shblock.physicscontrol.client.gui.RenderHelper;
 import com.shblock.physicscontrol.command.*;
-import com.shblock.physicscontrol.physics.physics.BodyUserObj;
+import com.shblock.physicscontrol.physics.user_obj.BodyUserObj;
+import com.shblock.physicscontrol.physics.user_obj.ElasticGroupUserObj;
 import com.shblock.physicscontrol.physics.util.*;
 import imgui.ImGui;
 import net.minecraft.client.KeyboardListener;
@@ -32,8 +33,7 @@ import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.*;
 import org.jbox2d.dynamics.joints.MouseJoint;
 import org.jbox2d.dynamics.joints.MouseJointDef;
-import org.jbox2d.particle.ParticleColor;
-import org.jbox2d.particle.ParticleDef;
+import org.jbox2d.particle.ParticleGroup;
 
 import java.io.File;
 import java.io.IOException;
@@ -174,7 +174,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
         super.render(matrixStack, combinedLight, combinedOverlay, particleTick);
         getSimulator().frame(particleTick);
 
-        ParticleRender2D.render(this.width, this.height, this.globalTranslate, this.globalScale, getSimulator().getSpace(), this.config);
+        ParticleRender2D.renderParticles(this.width, this.height, this.globalTranslate, this.globalScale, getSimulator().getSpace(), this.config);
         renderSpace(matrixStack, getSimulator().getSpace());
 
         drawScaleMeasure(matrixStack);
@@ -239,6 +239,16 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                     }
                 }
         );
+
+        if (space.getParticleGroupList() != null) {
+            for (ParticleGroup group : space.getParticleGroupList()) {
+                if (group != null) {
+                    if (group.getUserData() instanceof ElasticGroupUserObj) {
+                        ElasticParticleGroupRender.render(matrixStack, group, space);
+                    }
+                }
+            }
+        }
 
 //        System.out.println(this.lastFrameRenderedBodyCount);
 

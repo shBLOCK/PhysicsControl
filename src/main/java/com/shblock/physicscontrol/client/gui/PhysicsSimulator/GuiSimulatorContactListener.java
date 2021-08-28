@@ -1,6 +1,6 @@
 package com.shblock.physicscontrol.client.gui.PhysicsSimulator;
 
-import com.shblock.physicscontrol.physics.physics.BodyUserObj;
+import com.shblock.physicscontrol.physics.user_obj.BodyUserObj;
 import org.jbox2d.callbacks.ContactImpulse;
 import org.jbox2d.callbacks.ContactListener;
 import org.jbox2d.collision.Manifold;

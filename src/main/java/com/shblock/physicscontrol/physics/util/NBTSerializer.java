@@ -1,6 +1,8 @@
 package com.shblock.physicscontrol.physics.util;
 
-import com.shblock.physicscontrol.physics.physics.BodyUserObj;
+import com.shblock.physicscontrol.physics.user_obj.BodyUserObj;
+import com.shblock.physicscontrol.physics.user_obj.ElasticGroupUserObj;
+import com.shblock.physicscontrol.physics.user_obj.ElasticParticleUserObj;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.FloatNBT;
 import net.minecraft.nbt.INBT;
@@ -14,7 +16,11 @@ import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.*;
 import org.jbox2d.particle.ParticleColor;
 import org.jbox2d.particle.ParticleDef;
+import org.jbox2d.particle.ParticleGroup;
+import org.jbox2d.particle.ParticleGroupDef;
 
+import javax.annotation.Nullable;
+import java.lang.reflect.Field;
 import java.util.Arrays;
 
 public class NBTSerializer {
@@ -291,6 +297,18 @@ public class NBTSerializer {
         nbt.put("pos", toNBT(particleDef.position));
         nbt.put("vel", toNBT(particleDef.velocity));
         nbt.put("color", toNBT(particleDef.color));
+        if (particleDef.userData != null) {
+            CompoundNBT userObj = null;
+            String type = null;
+            if (particleDef.userData instanceof ElasticParticleUserObj) {
+                userObj = ((ElasticParticleUserObj) particleDef.userData).serializeNBT();
+                type = "elastic";
+            }
+            if (userObj != null) {
+                userObj.putString("type", type);
+                nbt.put("user_obj", userObj);
+            }
+        }
         return nbt;
     }
 
@@ -300,30 +318,136 @@ public class NBTSerializer {
         def.position.set(vec2FromNBT(nbt.getCompound("pos")));
         def.velocity.set(vec2FromNBT(nbt.getCompound("vel")));
         def.color = particleColorFromNBT(nbt.getCompound("color"));
+        if (nbt.contains("user_obj")) {
+            CompoundNBT userObj = nbt.getCompound("user_obj");
+            switch (userObj.getString("type")) {
+                case "elastic":
+                    ElasticParticleUserObj obj = new ElasticParticleUserObj();
+                    obj.deserializeNBT(userObj);
+                    def.userData = obj;
+                    break;
+            }
+        }
         return def;
     }
 
-    public static CompoundNBT saveParticles(World world) {
+    public static CompoundNBT toNBT(World world, ParticleGroup group) {
         CompoundNBT nbt = new CompoundNBT();
+        nbt.putInt("group_flags", group.getGroupFlags());
+        nbt.put("pos", toNBT(group.getPosition()));
+        nbt.putFloat("angle", group.getAngle());
+//        nbt.put("linear_vel", toNBT(group.getLinearVelocity()));
+//        nbt.putFloat("angular_vel", group.getAngularVelocity());
+
+        float strength = 0F;
+        try {
+            Field field = group.getClass().getDeclaredField("m_strength");
+            field.setAccessible(true);
+            strength = field.getFloat(group);
+            field.setAccessible(false);
+        } catch (IllegalAccessException | NoSuchFieldException e) {
+            e.printStackTrace();
+            assert false;
+        }
+        nbt.putFloat("strength", strength);
+
+        boolean destroyAutomatically = true;
+        try {
+            Field field = group.getClass().getDeclaredField("m_destroyAutomatically");
+            field.setAccessible(true);
+            destroyAutomatically = field.getBoolean(group);
+            field.setAccessible(false);
+        } catch (IllegalAccessException | NoSuchFieldException e) {
+            e.printStackTrace();
+            assert false;
+        }
+        nbt.putBoolean("destroy_automatically", destroyAutomatically);
+
+        CompoundNBT objNBT = null;
+        String type = null;
+        if (group.getUserData() instanceof ElasticGroupUserObj) {
+            ElasticGroupUserObj elastic = (ElasticGroupUserObj) group.getUserData();
+            objNBT = elastic.serializeNBT();
+            type = "elastic";
+        }
+        if (objNBT != null) {
+            objNBT.putString("type", type);
+            nbt.put("user_obj", objNBT);
+        }
+
+        nbt.put("particles", saveParticlesInGroup(world, group));
+
+        return nbt;
+    }
+
+    public static ParticleGroupDef particleGroupDefFromNBT(CompoundNBT nbt) {
+        ParticleGroupDef def = new ParticleGroupDef();
+        def.groupFlags = nbt.getInt("group_flags");
+        def.position.set(vec2FromNBT(nbt.getCompound("pos")));
+        def.angle = nbt.getFloat("angle");
+//        def.linearVelocity.set(vec2FromNBT(nbt.getCompound("linear_vel")));
+//        def.angularVelocity = nbt.getFloat("angular_vel");
+        def.strength = nbt.getFloat("strength");
+        def.destroyAutomatically = nbt.getBoolean("destroy_automatically");
+
+        if (nbt.contains("user_obj")) {
+            CompoundNBT userNBT = nbt.getCompound("user_obj");
+            switch (userNBT.getString("type")) {
+                case "elastic":
+                    ElasticGroupUserObj elastic = new ElasticGroupUserObj();
+                    elastic.deserializeNBT(userNBT);
+                    def.userData = elastic;
+                    break;
+            }
+        }
+
+        return def;
+    }
+
+    public static void loadParticleGroup(World world, CompoundNBT nbt) {
+        ParticleDef[] defs = getParticleDefList(nbt.getCompound("particles"));
+        ParticleGroupDef groupDef = particleGroupDefFromNBT(nbt);
+        world.createParticleGroupForDeserialize(groupDef, defs);
+    }
+
+    public static CompoundNBT saveParticlesInGroup(World world, @Nullable ParticleGroup group) {
+        CompoundNBT nbt = new CompoundNBT();
+
+        int start = 0, end = world.getParticleCount();
+        if (group != null) {
+            start = group.getBufferIndex();
+            end = start + group.getParticleCount();
+        }
 
         ListNBT list = new ListNBT();
         ParticleDef tmp = new ParticleDef();
-        for (int i=0; i<world.getParticleCount(); i++) {
-            tmp.flags = world.getParticleFlagsBuffer()[i];
-            tmp.position.set(world.getParticlePositionBuffer()[i]);
-            tmp.velocity.set(world.getParticleVelocityBuffer()[i]);
-            tmp.color = world.getParticleColorBuffer()[i];
-            list.add(toNBT(tmp));
+        for (int i=start; i<end; i++) {
+            if (world.getParticleGroupBuffer()[i] == group) {
+                tmp.flags = world.getParticleFlagsBuffer()[i];
+                tmp.position.set(world.getParticlePositionBuffer()[i]);
+                tmp.velocity.set(world.getParticleVelocityBuffer()[i]);
+                tmp.color = world.getParticleColorBuffer()[i];
+                tmp.userData = world.getParticleUserDataBuffer()[i];
+                list.add(toNBT(tmp));
+            }
         }
         nbt.put("list", list);
 
         return nbt;
     }
 
-    public static void loadParticles(World world, CompoundNBT nbt) {
+    public static ParticleDef[] getParticleDefList(CompoundNBT nbt) {
         ListNBT list = nbt.getList("list", Constants.NBT.TAG_COMPOUND);
+        ParticleDef[] array = new ParticleDef[list.size()];
         for (int i=0; i<list.size(); i++) {
-            world.createParticle(particleDefFromNBT(list.getCompound(i)));
+            array[i] = particleDefFromNBT(list.getCompound(i));
+        }
+        return array;
+    }
+
+    public static void createAllParticles(World world, ParticleDef[] defs) {
+        for (ParticleDef def : defs) {
+            world.createParticle(def);
         }
     }
 
@@ -342,8 +466,19 @@ public class NBTSerializer {
 
         nbt.put("body_list", bodyListToNBT(space.getBodyList()));
 
-        nbt.put("particles", saveParticles(space));
-        //TODO: particle groups
+        nbt.put("particles", saveParticlesInGroup(space, null));
+
+        ListNBT groupsNBT = new ListNBT();
+        if (space.getParticleGroupBuffer() != null) {
+            for (int i=0; i<space.getParticleGroupCount(); i++) {
+                ParticleGroup group = space.getParticleGroupBuffer()[i];
+                if (group != null) {
+                    groupsNBT.add(toNBT(space, group));
+                }
+            }
+        }
+        nbt.put("groups", groupsNBT);
+
         return nbt;
     }
 
@@ -367,8 +502,13 @@ public class NBTSerializer {
             applyFixture(result, list.getCompound(i));
         }
 
-        loadParticles(space, nbt.getCompound("particles"));
-        //TODO: particle groups
+        createAllParticles(space, getParticleDefList(nbt.getCompound("particles")));
+
+        ListNBT groupsNBT = nbt.getList("groups", Constants.NBT.TAG_COMPOUND);
+        for (int i=0; i<groupsNBT.size(); i++) {
+            loadParticleGroup(space, groupsNBT.getCompound(i));
+        }
+
         return space;
     }
 

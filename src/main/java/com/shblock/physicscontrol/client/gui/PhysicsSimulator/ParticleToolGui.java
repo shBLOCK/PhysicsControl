@@ -177,8 +177,8 @@ public class ParticleToolGui {
 
                 List<Vec2> positions = new ArrayList<>();
                 float stride = Settings.particleStride * world.getParticleRadius() * 2F;
-                for (float x = aabb.lowerBound.x; x < aabb.upperBound.x; x += stride) {
-                    for (float y = aabb.lowerBound.y; y < aabb.upperBound.y; y += stride) {
+                for (float x = (float) (Math.floor(aabb.lowerBound.x / stride) * stride); x < aabb.upperBound.x; x += stride) {
+                    for (float y = (float) (Math.floor(aabb.lowerBound.y / stride) * stride); y < aabb.upperBound.y; y += stride) {
                         Vec2 point = new Vec2(x, y);
                         if (shape.testPoint(transform, point)) {
                             positions.add(point);

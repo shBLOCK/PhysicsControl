@@ -14,6 +14,7 @@ uniform float borderUpper;
 
 out vec4 color;
 
+#define WALL_FLAG 4
 #define POWDER_FLAG 64
 
 #define TEXEL_PER 3
@@ -52,7 +53,7 @@ void main() {
 
         float dist = distance(pos, currentPos);
 
-        if ((flags & POWDER_FLAG) != 0) {
+        if ((flags & POWDER_FLAG) != 0 || (flags & WALL_FLAG) != 0) {
             if (dist < closestPowderDist) {
                 closestPowderDist = dist;
                 closestPowderColor = col;

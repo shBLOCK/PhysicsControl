@@ -1,7 +1,7 @@
 package com.shblock.physicscontrol.command;
 
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
-import com.shblock.physicscontrol.physics.physics.BodyUserObj;
+import com.shblock.physicscontrol.physics.user_obj.BodyUserObj;
 import com.shblock.physicscontrol.physics.util.NBTSerializer;
 import net.minecraft.nbt.CompoundNBT;
 import org.jbox2d.common.Vec2;

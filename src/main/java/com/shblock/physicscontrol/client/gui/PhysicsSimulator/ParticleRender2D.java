@@ -14,6 +14,7 @@ import org.jbox2d.collision.AABB;
 import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.World;
 import org.jbox2d.particle.ParticleColor;
+import org.jbox2d.particle.ParticleGroup;
 import org.jbox2d.particle.ParticleType;
 
 import java.util.Arrays;
@@ -70,8 +71,8 @@ public class ParticleRender2D {
         glBindTexture(GL_TEXTURE_BUFFER, 0);
     }
 
-    public static void render(int screenWidth, int screenHeight, Vec2 translate, float scale, World world, SimulatorConfig config) {
-        render(
+    public static void renderParticles(int screenWidth, int screenHeight, Vec2 translate, float scale, World world, SimulatorConfig config) {
+        renderParticles(
                 screenWidth,
                 screenHeight,
                 translate,
@@ -82,17 +83,18 @@ public class ParticleRender2D {
                 world.getParticleVelocityBuffer(),
                 world.getParticleColorBuffer(),
                 world.getParticleFlagsBuffer(),
+                world.getParticleGroupBuffer(),
                 config
         );
     }
 
-    private static float[] genRenderData(int count, float particleSize, Vec2[] position, Vec2[] velocity, ParticleColor[] color, int[] flags, Predicate<Vec2> filter) {
+    private static float[] genParticlesRenderData(int count, float particleSize, Vec2[] position, Vec2[] velocity, ParticleColor[] color, int[] flags, ParticleGroup[] group, Predicate<Vec2> filter) {
         int dataPerP = 4 * RGBA_PER_PARTICLE;
         float[] data = new float[dataPerP * count];
         int cnt = 0;
         int i = 0;
         while (i<Math.min(count, MAX_COUNT)) {
-            if (filter.test(position[i]) && ((flags[i] & ParticleType.b2_zombieParticle) == 0)) {
+            if (group[i] == null && filter.test(position[i]) && ((flags[i] & ParticleType.b2_zombieParticle) == 0)) {
                 data[dataPerP * cnt] = position[i].x;
                 data[dataPerP * cnt + 1] = position[i].y;
 
@@ -113,7 +115,7 @@ public class ParticleRender2D {
         return Arrays.copyOfRange(data, 0, cnt * dataPerP);
     }
 
-    public static void render(int screenWidth, int screenHeight, Vec2 translate, float scale, int count, float particleSize, Vec2[] position, Vec2[] velocity, ParticleColor[] color, int[] flags, SimulatorConfig config) {
+    public static void renderParticles(int screenWidth, int screenHeight, Vec2 translate, float scale, int count, float particleSize, Vec2[] position, Vec2[] velocity, ParticleColor[] color, int[] flags, ParticleGroup[] groups, SimulatorConfig config) {
         Vec2 lower = new Vec2(
                 (-translate.x) / scale,
                 (-translate.y) / scale
@@ -142,7 +144,7 @@ public class ParticleRender2D {
         glUniform1f(glGetUniformLocation(shader, "scale"), scale * guiScale);
         glBindBuffer(GL_TEXTURE_BUFFER, tbo);
         AABB screenBB = new AABB(lower, upper);
-        float[] data = genRenderData(count, particleSize, position, velocity, color, flags, pos -> {
+        float[] data = genParticlesRenderData(count, particleSize, position, velocity, color, flags, groups, pos -> {
             Vec2 p = pos.clone();
             p.y = -p.y;
             return AABBHelper.isOverlapping2D(screenBB, new AABB(p.sub(new Vec2(FILTER_AABB_SIZE, FILTER_AABB_SIZE)), p.add(new Vec2(FILTER_AABB_SIZE, FILTER_AABB_SIZE))));
@@ -154,7 +156,7 @@ public class ParticleRender2D {
         );
         glBindTexture(GL_TEXTURE_BUFFER, tex);
         glUniform1i(glGetUniformLocation(shader, "data"), 0);
-        glUniform1ui(glGetUniformLocation(shader, "count"), data.length / (4 * RGBA_PER_PARTICLE)); //TODO: improve this way to get the render count
+        glUniform1ui(glGetUniformLocation(shader, "count"), data.length / (4 * RGBA_PER_PARTICLE));
 
         glUniform1f(glGetUniformLocation(shader, "smoothLower"), config.particleRenderSmoothLowerBound);
         glUniform1f(glGetUniformLocation(shader, "smoothUpper"), config.particleRenderSmoothUpperBound);

@@ -1748,6 +1748,19 @@ public class World {
     }
 
     /**
+     * DON'T USE THIS!!!!!
+     * I have no other way but to do this... (only for deserializing)
+     */
+    public ParticleGroup createParticleGroupForDeserialize(ParticleGroupDef groupDef, ParticleDef[] defs) {
+        assert (isLocked() == false);
+        if (isLocked()) {
+            return null;
+        }
+        ParticleGroup g = m_particleSystem.createParticleGroupForDeserialize(groupDef, defs);
+        return g;
+    }
+
+    /**
      * Join two particle groups.
      *
      * @param the first group. Expands to encompass the second group.

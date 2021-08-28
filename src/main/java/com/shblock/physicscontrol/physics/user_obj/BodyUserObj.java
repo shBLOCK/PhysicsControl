@@ -1,13 +1,13 @@
-package com.shblock.physicscontrol.physics.physics;
+package com.shblock.physicscontrol.physics.user_obj;
 
 import com.shblock.physicscontrol.Config;
 import com.shblock.physicscontrol.physics.UserObjBase;
 import com.shblock.physicscontrol.physics.material.Material;
 import com.shblock.physicscontrol.physics.util.BodyHelper;
 import com.shblock.physicscontrol.physics.util.NBTSerializer;
-import com.shblock.physicscontrol.physics.util.ShapeHelper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.SimpleSound;
+import net.minecraft.client.renderer.texture.Texture;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.item.Item;
 import net.minecraft.nbt.CompoundNBT;
@@ -21,6 +21,8 @@ import org.jbox2d.dynamics.World;
 
 import javax.annotation.Nullable;
 import java.util.Random;
+
+import static org.lwjgl.opengl.GL11.*;
 
 public class BodyUserObj extends UserObjBase {
     private static final Random SOUND_RANDOMIZER = new Random();
@@ -114,19 +116,28 @@ public class BodyUserObj extends UserObjBase {
     }
 
     public float getFloatR() {
-        return this.r / 256F;
+        return this.r / 255F;
     }
 
     public float getFloatG() {
-        return this.g / 256F;
+        return this.g / 255F;
     }
 
     public float getFloatB() {
-        return this.b / 256F;
+        return this.b / 255F;
     }
 
     public float getFloatAlpha() {
-        return this.alpha / 256F;
+        return this.alpha / 255F;
+    }
+
+    public float[] getColor4f() {
+        return new float[]{
+                getFloatR(),
+                getFloatG(),
+                getFloatB(),
+                getFloatAlpha()
+        };
     }
 
     public void randomColor() {
@@ -234,6 +245,20 @@ public class BodyUserObj extends UserObjBase {
 
     public ResourceLocation getTexture() {
         return this.material == null ? null : this.material.texture;
+    }
+
+    public float[] getPixelAt(Vec2 pos) {
+        if (getTexture() != null) {
+            Texture texture = Minecraft.getInstance().textureManager.getTexture(getTexture());
+            if (texture != null) {
+                glBindTexture(GL_TEXTURE_2D, texture.getId());
+                float[] color = new float[4];
+                glReadPixels((int) pos.x, (int) pos.y, 1, 1, GL_RGBA, GL_FLOAT, color);
+                return color;
+            }
+        }
+
+        return null;
     }
 
     @OnlyIn(Dist.CLIENT)

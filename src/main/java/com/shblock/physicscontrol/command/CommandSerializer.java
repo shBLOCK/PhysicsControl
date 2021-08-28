@@ -57,5 +57,6 @@ public class CommandSerializer {
         register(CommandCreateParticles.class);
         register(CommandEditParticles.class);
         register(CommandDeleteParticles.class);
+        register(CommandBodyToElastic.class);
     }
 }

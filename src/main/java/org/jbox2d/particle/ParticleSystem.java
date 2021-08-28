@@ -396,6 +396,91 @@ public class ParticleSystem {
         return group;
     }
 
+    /**
+     * DON'T USE THIS!!!!!
+     * I have no other way but to do this... (only for deserializing)
+     */
+    public ParticleGroup createParticleGroupForDeserialize(ParticleGroupDef groupDef, ParticleDef[] defs) {
+        float stride = getParticleStride();
+        tempTransform.setIdentity();
+        Transform transform = tempTransform2;
+        transform.setIdentity();
+        int firstIndex = m_count;
+
+        for (ParticleDef def : defs) {
+            createParticle(def);
+        }
+
+        int lastIndex = m_count;
+
+        ParticleGroup group = new ParticleGroup();
+        group.m_system = this;
+        group.m_firstIndex = firstIndex;
+        group.m_lastIndex = lastIndex;
+        group.m_groupFlags = groupDef.groupFlags;
+        group.m_strength = groupDef.strength;
+        group.m_userData = groupDef.userData;
+        group.m_transform.set(transform);
+        group.m_destroyAutomatically = groupDef.destroyAutomatically;
+        group.m_prev = null;
+        group.m_next = m_groupList;
+        if (m_groupList != null) {
+            m_groupList.m_prev = group;
+        }
+        m_groupList = group;
+        ++m_groupCount;
+        for (int i = firstIndex; i < lastIndex; i++) {
+            m_groupBuffer[i] = group;
+        }
+
+        updateContacts(true);
+        if ((groupDef.flags & k_pairFlags) != 0) {
+            for (int k = 0; k < m_contactCount; k++) {
+                ParticleContact contact = m_contactBuffer[k];
+                int a = contact.indexA;
+                int b = contact.indexB;
+                if (a > b) {
+                    int temp = a;
+                    a = b;
+                    b = temp;
+                }
+                if (firstIndex <= a && b < lastIndex) {
+                    if (m_pairCount >= m_pairCapacity) {
+                        int oldCapacity = m_pairCapacity;
+                        int newCapacity =
+                                m_pairCount != 0 ? 2 * m_pairCount : Settings.minParticleBufferCapacity;
+                        m_pairBuffer =
+                                BufferUtils.reallocateBuffer(Pair.class, m_pairBuffer, oldCapacity, newCapacity);
+                        m_pairCapacity = newCapacity;
+                    }
+                    Pair pair = m_pairBuffer[m_pairCount];
+                    pair.indexA = a;
+                    pair.indexB = b;
+                    pair.flags = contact.flags;
+                    pair.strength = groupDef.strength;
+                    pair.distance = MathUtils.distance(m_positionBuffer.data[a], m_positionBuffer.data[b]);
+                    m_pairCount++;
+                }
+            }
+        }
+        if ((groupDef.flags & k_triadFlags) != 0) {
+            VoronoiDiagram diagram = new VoronoiDiagram(lastIndex - firstIndex);
+            for (int i = firstIndex; i < lastIndex; i++) {
+                diagram.addGenerator(m_positionBuffer.data[i], i);
+            }
+            diagram.generate(stride / 2);
+            createParticleGroupCallback.system = this;
+            createParticleGroupCallback.def = groupDef;
+            createParticleGroupCallback.firstIndex = firstIndex;
+            diagram.getNodes(createParticleGroupCallback);
+        }
+        if ((groupDef.groupFlags & ParticleGroupType.b2_solidParticleGroup) != 0) {
+            computeDepthForGroup(group);
+        }
+
+        return group;
+    }
+
     public void joinParticleGroups(ParticleGroup groupA, ParticleGroup groupB) {
         assert (groupA != groupB);
         RotateBuffer(groupB.m_firstIndex, groupB.m_lastIndex, m_count);

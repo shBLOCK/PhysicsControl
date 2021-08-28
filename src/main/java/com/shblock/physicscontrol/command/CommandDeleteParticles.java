@@ -30,9 +30,13 @@ public class CommandDeleteParticles extends PhysicsCommandBase {
     public void execute() {
         InteractivePhysicsSimulator2D simulator = InteractivePhysicsSimulator2D.getInstance();
 
-        for (int index : this.indexes) {
-            simulator.deleteParticleLocal(index);
+        int[] array = new int[this.indexes.size()];
+        int i=0;
+        for (int num : this.indexes) {
+            array[i] = num;
+            i++;
         }
+        simulator.deleteParticlesLocal(array);
     }
 
     @Override

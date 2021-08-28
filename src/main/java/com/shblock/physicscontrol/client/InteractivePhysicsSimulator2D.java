@@ -4,12 +4,11 @@ import com.google.common.collect.Lists;
 import com.shblock.physicscontrol.PhysicsControl;
 import com.shblock.physicscontrol.client.gui.PhysicsSimulator.GuiSimulatorContactListener;
 import com.shblock.physicscontrol.command.*;
-import com.shblock.physicscontrol.physics.physics.BodyUserObj;
+import com.shblock.physicscontrol.physics.user_obj.BodyUserObj;
+import com.shblock.physicscontrol.physics.user_obj.ElasticGroupUserObj;
 import com.shblock.physicscontrol.physics.util.BodyHelper;
 import com.shblock.physicscontrol.physics.util.NBTSerializer;
-import net.minecraft.client.resources.I18n;
 import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.nbt.INBT;
 import net.minecraft.nbt.ListNBT;
 import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.common.util.INBTSerializable;
@@ -19,6 +18,8 @@ import org.jbox2d.collision.shapes.Shape;
 import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.*;
 import org.jbox2d.particle.ParticleDef;
+import org.jbox2d.particle.ParticleGroup;
+import org.jbox2d.particle.ParticleGroupDef;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -42,7 +43,8 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
     private float singleStepLength = 1F / 60F;
     private CommandHistory commandHistory;
     private final Map<Integer, Body> idBodyMap = new HashMap<>();
-    private final List<Body> selectedObjects = new ArrayList<>(); //TODO: store only id when serializing
+    private final List<Body> selectedBodies = new ArrayList<>(); //TODO: store only id when serializing
+//    private final Set<Integer> selectedParticles = new HashSet<>();
 
     public InteractivePhysicsSimulator2D(World space) {
         if (currentInstance != null) {
@@ -63,7 +65,7 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
         this.space.setContactListener(GuiSimulatorContactListener.getInstance());
         this.space.setSleepingAllowed(false);
         this.space.setAllowSleep(false);
-        this.space.setParticleRadius(0.25F);
+        this.space.setParticleRadius(0.125F);
     }
 
     public void close() {
@@ -115,7 +117,7 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
     }
 
     public List<Body> getSelectedBodies() {
-        return this.selectedObjects;
+        return this.selectedBodies;
     }
 
     public Body getBodyFromId(int id) {
@@ -167,11 +169,11 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
     }
 
     public void moveSelected(Vec2 offset, boolean isFirst) {
-        executeCommand(new CommandSetBodyPos(this.selectedObjects, offset, isFirst));
+        executeCommand(new CommandSetBodyPos(this.selectedBodies, offset, isFirst));
     }
 
     public void deleteSelected() {
-        executeCommand(new CommandDeleteBodies(this.selectedObjects));
+        executeCommand(new CommandDeleteBodies(this.selectedBodies));
     }
 
     public CompoundNBT copyBodies(List<Body> bodies, Vec2 mousePos) {
@@ -217,7 +219,7 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
     }
 
     public void changeSelectedZLevel(int change) {
-        executeCommand(new CommandChangeZLevel(change, this.selectedObjects));
+        executeCommand(new CommandChangeZLevel(change, this.selectedBodies));
     }
 
     public void freezeBody(Body body) {
@@ -230,7 +232,7 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
     }
 
     public void startMove() {
-        for (Body body : this.selectedObjects) {
+        for (Body body : this.selectedBodies) {
             freezeBody(body);
         }
     }
@@ -245,7 +247,7 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
     }
 
     public void stopMove() {
-        for (Body body : this.selectedObjects) {
+        for (Body body : this.selectedBodies) {
             unfreezeBody(body);
         }
     }
@@ -254,8 +256,40 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
         getSpace().createParticle(def);
     }
 
+    public void deleteParticlesLocal(int[] indexes) {
+        Set<ParticleGroup> elasticGroupsToUpdate = null;
+
+        for (int index : indexes) {
+            getSpace().destroyParticle(index);
+
+            ParticleGroup group = getSpace().getParticleGroupBuffer()[index];
+            if (group != null) {
+                if (group.getUserData() instanceof ElasticGroupUserObj) {
+                    if (elasticGroupsToUpdate == null) {
+                        elasticGroupsToUpdate = new HashSet<>();
+                    }
+                    elasticGroupsToUpdate.add(group);
+                }
+            }
+        }
+
+        if (elasticGroupsToUpdate != null) {
+            for (ParticleGroup group : elasticGroupsToUpdate) {
+                ((ElasticGroupUserObj) group.getUserData()).update(getSpace(), group);
+            }
+        }
+    }
+
     public void deleteParticleLocal(int index) {
-        getSpace().destroyParticle(index);
+        this.deleteParticlesLocal(new int[]{index});
+    }
+
+    public ParticleGroup addParticleGroupLocal(ParticleGroupDef def) {
+        return getSpace().createParticleGroup(def);
+    }
+
+    public void joinParticleGroupLocal(ParticleGroup a, ParticleGroup b) {
+        getSpace().joinParticleGroups(a, b);
     }
 
     public List<Body> pointTest(Vec2 point) {
@@ -329,16 +363,16 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
     }
 
     public boolean isSelected(Body pco) {
-        return this.selectedObjects.contains(pco);
+        return this.selectedBodies.contains(pco);
     }
 
     public boolean isAnySelected() {
-        return !this.selectedObjects.isEmpty();
+        return !this.selectedBodies.isEmpty();
     }
 
     public boolean select(Body pco) {
         if (!isSelected(pco)) {
-            this.selectedObjects.add(pco);
+            this.selectedBodies.add(pco);
             return true;
         }
         return false;
@@ -350,11 +384,11 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
     }
 
     public boolean unselect(Body obj) {
-        return this.selectedObjects.remove(obj);
+        return this.selectedBodies.remove(obj);
     }
 
     public void unselectAll() {
-        this.selectedObjects.clear();
+        this.selectedBodies.clear();
     }
 
     public World getSpace() {
@@ -451,17 +485,17 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
         nbt.putFloat("simulation_speed", this.simulationSpeed);
         nbt.putFloat("single_step_length", this.singleStepLength);
         nbt.put("command_history", this.commandHistory.serializeNBT());
-        List<Integer> selected = new ArrayList<>();
-        for (int i=0; i<this.selectedObjects.size(); i++) {
-            Body body = this.selectedObjects.get(i);
+        List<Integer> selectedBs = new ArrayList<>();
+        for (int i = 0; i<this.selectedBodies.size(); i++) {
+            Body body = this.selectedBodies.get(i);
             if (body != null) {
                 BodyUserObj obj = (BodyUserObj) body.getUserData();
                 if (obj != null) {
-                    selected.add(obj.getId());
+                    selectedBs.add(obj.getId());
                 }
             }
         }
-        nbt.putIntArray("selected_objects", selected);
+        nbt.putIntArray("selected_bodies", selectedBs);
         return nbt;
     }
 
@@ -489,9 +523,9 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
             body = body.getNext();
         }
 
-        this.selectedObjects.clear();
-        for (int id : nbt.getIntArray("selected_objects")) {
-            this.selectedObjects.add(getBodyFromId(id));
+        this.selectedBodies.clear();
+        for (int id : nbt.getIntArray("selected_bodies")) {
+            this.selectedBodies.add(getBodyFromId(id));
         }
     }
 }
