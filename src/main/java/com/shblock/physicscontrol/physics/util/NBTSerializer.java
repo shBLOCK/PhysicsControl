@@ -14,10 +14,7 @@ import org.jbox2d.collision.shapes.Shape;
 import org.jbox2d.collision.shapes.ShapeType;
 import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.*;
-import org.jbox2d.particle.ParticleColor;
-import org.jbox2d.particle.ParticleDef;
-import org.jbox2d.particle.ParticleGroup;
-import org.jbox2d.particle.ParticleGroupDef;
+import org.jbox2d.particle.*;
 
 import javax.annotation.Nullable;
 import java.lang.reflect.Field;
@@ -331,6 +328,26 @@ public class NBTSerializer {
         return def;
     }
 
+    public static CompoundNBT toNBT(ParticleSystem.Pair pair, int indexOffset) {
+        CompoundNBT nbt = new CompoundNBT();
+        nbt.putInt("a", pair.indexA - indexOffset);
+        nbt.putInt("b", pair.indexB - indexOffset);
+        nbt.putFloat("distance", pair.distance);
+        nbt.putFloat("strength", pair.strength);
+        nbt.putInt("flags", pair.flags);
+        return nbt;
+    }
+
+    public static ParticleSystem.Pair pairFromNBT(CompoundNBT nbt) {
+        ParticleSystem.Pair pair = new ParticleSystem.Pair();
+        pair.indexA = nbt.getInt("a");
+        pair.indexB = nbt.getInt("b");
+        pair.distance = nbt.getFloat("distance");
+        pair.strength = nbt.getFloat("strength");
+        pair.flags = nbt.getInt("flags");
+        return pair;
+    }
+
     public static CompoundNBT toNBT(World world, ParticleGroup group) {
         CompoundNBT nbt = new CompoundNBT();
         nbt.putInt("group_flags", group.getGroupFlags());
@@ -407,7 +424,15 @@ public class NBTSerializer {
     public static void loadParticleGroup(World world, CompoundNBT nbt) {
         ParticleDef[] defs = getParticleDefList(nbt.getCompound("particles"));
         ParticleGroupDef groupDef = particleGroupDefFromNBT(nbt);
-        world.createParticleGroupForDeserialize(groupDef, defs);
+        ParticleSystem.Pair[] pairs = new ParticleSystem.Pair[0];
+        if (nbt.getCompound("particles").contains("pairs")) {
+            ListNBT pairsNBT = nbt.getCompound("particles").getList("pairs", Constants.NBT.TAG_COMPOUND);
+            pairs = new ParticleSystem.Pair[pairsNBT.size()];
+            for (int i=0; i<pairsNBT.size(); i++) {
+                pairs[i] = pairFromNBT(pairsNBT.getCompound(i));
+            }
+        }
+        world.createParticleGroupForDeserialize(groupDef, defs, pairs);
     }
 
     public static CompoundNBT saveParticlesInGroup(World world, @Nullable ParticleGroup group) {
@@ -432,6 +457,19 @@ public class NBTSerializer {
             }
         }
         nbt.put("list", list);
+
+        ParticleSystem system = world.getParticleSystem();
+        if (system.getPairBuffer() != null) {
+            if (group != null) {
+                ListNBT pairs = new ListNBT();
+                for (ParticleSystem.Pair pair : system.getPairBuffer()) {
+                    if (MathUtil.isInRange(pair.indexA, start, end) && MathUtil.isInRange(pair.indexB, start, end)) {
+                        pairs.add(toNBT(pair, start));
+                    }
+                }
+                nbt.put("pairs", pairs);
+            }
+        }
 
         return nbt;
     }
@@ -469,12 +507,11 @@ public class NBTSerializer {
         nbt.put("particles", saveParticlesInGroup(space, null));
 
         ListNBT groupsNBT = new ListNBT();
-        if (space.getParticleGroupBuffer() != null) {
-            for (int i=0; i<space.getParticleGroupCount(); i++) {
-                ParticleGroup group = space.getParticleGroupBuffer()[i];
-                if (group != null) {
-                    groupsNBT.add(toNBT(space, group));
-                }
+        if (space.getParticleGroupList() != null) {
+            ParticleGroup group = space.getParticleGroupList();
+            while (group != null) {
+                groupsNBT.add(toNBT(space, group));
+                group = group.getNext();
             }
         }
         nbt.put("groups", groupsNBT);

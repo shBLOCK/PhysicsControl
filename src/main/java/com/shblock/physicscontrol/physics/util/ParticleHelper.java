@@ -5,11 +5,9 @@ import org.jbox2d.collision.shapes.Shape;
 import org.jbox2d.common.Transform;
 import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.World;
-import org.jbox2d.particle.ParticleColor;
-import org.jbox2d.particle.ParticleDef;
-import org.jbox2d.particle.ParticleGroup;
-import org.jbox2d.particle.ParticleType;
+import org.jbox2d.particle.*;
 
+import java.lang.reflect.Field;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -129,4 +127,44 @@ public class ParticleHelper {
         }
         return new AABB(lower, upper);
     }
+
+    public static boolean isValidParticle(int[] flagsBuf, int index) {
+        return (flagsBuf[index] & ParticleType.b2_zombieParticle) == 0;
+    }
+
+//    public static ParticleSystem getParticleSystem(World world) {
+//        try {
+//            Field field = world.getClass().getDeclaredField("m_particleSystem");
+//            field.setAccessible(true);
+//            ParticleSystem result = (ParticleSystem) field.get(world);
+//            field.setAccessible(false);
+//            return result;
+//        } catch (IllegalAccessException | NoSuchFieldException e) {
+//            e.printStackTrace();
+//            assert false;
+//            return null;
+//        }
+//    }
+//
+//    public static ParticleSystem.Pair[] getPairBuffer(ParticleSystem system) {
+//        try {
+//            Field field = system.getClass().getDeclaredField("m_pairBuffer");
+//            field.setAccessible(true);
+//            ParticleSystem.Pair[] result = (ParticleSystem.Pair[]) field.get(system);
+//            field.setAccessible(false);
+//            return result;
+//        } catch (IllegalAccessException | NoSuchFieldException e) {
+//            e.printStackTrace();
+//            assert false;
+//            return null;
+//        }
+//    }
+//
+//    public static ParticleSystem.Pair[] getPairBuffer(World world) {
+//        ParticleSystem system = getParticleSystem(world);
+//        if (system != null) {
+//            return getPairBuffer(system);
+//        }
+//        return null;
+//    }
 }

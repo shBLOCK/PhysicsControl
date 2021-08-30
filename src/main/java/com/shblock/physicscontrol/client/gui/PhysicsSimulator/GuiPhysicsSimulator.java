@@ -38,6 +38,7 @@ import org.jbox2d.particle.ParticleGroup;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -241,12 +242,12 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
         );
 
         if (space.getParticleGroupList() != null) {
-            for (ParticleGroup group : space.getParticleGroupList()) {
-                if (group != null) {
-                    if (group.getUserData() instanceof ElasticGroupUserObj) {
-                        ElasticParticleGroupRender.render(matrixStack, group, space);
-                    }
+            ParticleGroup group = space.getParticleGroupList();
+            while (group != null) {
+                if (group.getUserData() instanceof ElasticGroupUserObj) {
+                    ElasticParticleGroupRender.render(matrixStack, group, space);
                 }
+                group = group.getNext();
             }
         }
 
@@ -459,7 +460,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
             if (this.particleToolGui == null) {
                 this.particleToolGui = new ParticleToolGui();
             }
-            this.particleToolGui.buildImGui(this.config);
+            this.particleToolGui.buildImGui(getSimulator(), this.config);
         }
     }
 

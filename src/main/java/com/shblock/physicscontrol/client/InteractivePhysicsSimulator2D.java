@@ -275,7 +275,12 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
 
         if (elasticGroupsToUpdate != null) {
             for (ParticleGroup group : elasticGroupsToUpdate) {
-                ((ElasticGroupUserObj) group.getUserData()).update(getSpace(), group);
+                ((ElasticGroupUserObj) group.getUserData()).buildMesh(getSpace(), group);
+            }
+            for (ParticleGroup group : elasticGroupsToUpdate) {
+                if (group.getParticleCount() < 3) {
+                    getSpace().destroyParticlesInGroup(group);
+                }
             }
         }
     }

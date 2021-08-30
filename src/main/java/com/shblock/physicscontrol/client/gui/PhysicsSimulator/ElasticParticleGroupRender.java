@@ -21,6 +21,7 @@ public class ElasticParticleGroupRender {
     public static void render(MatrixStack matrixStack, ParticleGroup group, World world) {
         Vec2[] posBuf = world.getParticlePositionBuffer();
         Object[] objBuf = world.getParticleUserDataBuffer();
+        int[] flagsBuf = world.getParticleFlagsBuffer();
         ParticleColor[] colorBuf = world.getParticleColorBuffer();
         ElasticGroupUserObj obj = (ElasticGroupUserObj) group.getUserData();
         Vec2[] uvArray = obj.getUvArray();
@@ -31,9 +32,12 @@ public class ElasticParticleGroupRender {
         int first = group.getBufferIndex();
         int last = first + group.getParticleCount();
         for (int i=first; i<last; i++) {
+            if (!ParticleHelper.isValidParticle(flagsBuf, i)) {
+                continue;
+            }
             int index = ((ElasticParticleUserObj) objBuf[i]).uvIndex;
             vertexes[index] = posBuf[i].clone();
-            colors[index] = ParticleHelper.particleColorToFloat4(colorBuf[index]);
+            colors[index] = ParticleHelper.particleColorToFloat4(colorBuf[i]);
         }
 
         matrixStack.pushPose();
@@ -76,6 +80,16 @@ public class ElasticParticleGroupRender {
         } else {
             RenderSystem.enableTexture();
         }
+
+//        RenderSystem.disableTexture();
+////        GL11.glPointSize(5);
+//        builder.begin(GL11.GL_POINTS, DefaultVertexFormats.POSITION_COLOR);
+//        for (int i=first; i<last; i++) {
+//            Vec2 pos = posBuf[i];
+//            builder.vertex(matrix, pos.x, -pos.y, 0F).color(0F, 1F, 0F, 1F).endVertex();
+//        }
+//        tessellator.end();
+//        RenderSystem.enableTexture();
 
         matrixStack.popPose();
     }

@@ -26,6 +26,7 @@ import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.World;
 import org.jbox2d.particle.ParticleColor;
 import org.jbox2d.particle.ParticleDef;
+import org.jbox2d.particle.ParticleGroup;
 import org.jbox2d.particle.ParticleType;
 
 import java.util.ArrayList;
@@ -35,7 +36,7 @@ import java.util.Set;
 public class ParticleToolGui {
     private static final String PREFIX = "physicscontrol.gui.sim.particle_tool.";
 
-    public void buildImGui(SimulatorConfig config) {
+    public void buildImGui(InteractivePhysicsSimulator2D simulator, SimulatorConfig config) {
         if (ImGui.begin(I18n.get(PREFIX + "window"))) {
             if (ImGui.beginTabBar("##tab_bar", ImGuiTabBarFlags.NoCloseWithMiddleMouseButton)) {
                 if (ImGui.beginTabItem(I18n.get(PREFIX + "tab.tools"))) {
@@ -110,6 +111,22 @@ public class ParticleToolGui {
 
                     ImGui.endTabItem();
                 }
+
+//                if (ImGui.beginTabItem(I18n.get(PREFIX + "tab.groups"))) {
+//                    if (ImGui.beginListBox("##groups")) {
+//                        World world = simulator.getSpace();
+//                        ParticleGroup group = world.getParticleGroupList();
+//                        while (group != null) {
+//                            ImGui.sele
+//                        }
+//
+//                        ImGui.endListBox();
+//                    }
+//
+//                    ImGui.separator();
+//
+//                    ImGui.endTabItem();
+//                }
 
                 ImGui.endTabBar();
             }

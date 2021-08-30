@@ -895,6 +895,10 @@ public class World {
         return m_contactManager.m_contactList;
     }
 
+    public ParticleSystem getParticleSystem() {
+        return m_particleSystem;
+    }
+
     public boolean isSleepingAllowed() {
         return m_allowSleep;
     }
@@ -1751,12 +1755,12 @@ public class World {
      * DON'T USE THIS!!!!!
      * I have no other way but to do this... (only for deserializing)
      */
-    public ParticleGroup createParticleGroupForDeserialize(ParticleGroupDef groupDef, ParticleDef[] defs) {
+    public ParticleGroup createParticleGroupForDeserialize(ParticleGroupDef groupDef, ParticleDef[] defs, ParticleSystem.Pair[] pairs) {
         assert (isLocked() == false);
         if (isLocked()) {
             return null;
         }
-        ParticleGroup g = m_particleSystem.createParticleGroupForDeserialize(groupDef, defs);
+        ParticleGroup g = m_particleSystem.createParticleGroupForDeserialize(groupDef, defs, pairs);
         return g;
     }
 
@@ -1807,7 +1811,7 @@ public class World {
      *
      * @return the head of the world particle group list.
      */
-    public ParticleGroup[] getParticleGroupList() {
+    public ParticleGroup getParticleGroupList() {
         return m_particleSystem.getParticleGroupList();
     }
 

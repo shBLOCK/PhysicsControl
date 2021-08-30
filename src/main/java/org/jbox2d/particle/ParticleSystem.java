@@ -400,7 +400,7 @@ public class ParticleSystem {
      * DON'T USE THIS!!!!!
      * I have no other way but to do this... (only for deserializing)
      */
-    public ParticleGroup createParticleGroupForDeserialize(ParticleGroupDef groupDef, ParticleDef[] defs) {
+    public ParticleGroup createParticleGroupForDeserialize(ParticleGroupDef groupDef, ParticleDef[] defs, ParticleSystem.Pair[] pairs) {
         float stride = getParticleStride();
         tempTransform.setIdentity();
         Transform transform = tempTransform2;
@@ -434,17 +434,9 @@ public class ParticleSystem {
         }
 
         updateContacts(true);
-        if ((groupDef.flags & k_pairFlags) != 0) {
-            for (int k = 0; k < m_contactCount; k++) {
-                ParticleContact contact = m_contactBuffer[k];
-                int a = contact.indexA;
-                int b = contact.indexB;
-                if (a > b) {
-                    int temp = a;
-                    a = b;
-                    b = temp;
-                }
-                if (firstIndex <= a && b < lastIndex) {
+//        if ((groupDef.flags & k_pairFlags) != 0) {
+            for (int k = 0; k < pairs.length; k++) {
+//                if (firstIndex <= a && b < lastIndex) {
                     if (m_pairCount >= m_pairCapacity) {
                         int oldCapacity = m_pairCapacity;
                         int newCapacity =
@@ -453,16 +445,14 @@ public class ParticleSystem {
                                 BufferUtils.reallocateBuffer(Pair.class, m_pairBuffer, oldCapacity, newCapacity);
                         m_pairCapacity = newCapacity;
                     }
-                    Pair pair = m_pairBuffer[m_pairCount];
-                    pair.indexA = a;
-                    pair.indexB = b;
-                    pair.flags = contact.flags;
-                    pair.strength = groupDef.strength;
-                    pair.distance = MathUtils.distance(m_positionBuffer.data[a], m_positionBuffer.data[b]);
+                    Pair pair = pairs[k];
+                    pair.indexA += firstIndex;
+                    pair.indexB += firstIndex;
+                    m_pairBuffer[m_pairCount] = pair;
                     m_pairCount++;
-                }
+//                }
             }
-        }
+//        }
         if ((groupDef.flags & k_triadFlags) != 0) {
             VoronoiDiagram diagram = new VoronoiDiagram(lastIndex - firstIndex);
             for (int i = firstIndex; i < lastIndex; i++) {
@@ -1686,8 +1676,8 @@ public class ParticleSystem {
         return m_groupCount;
     }
 
-    public ParticleGroup[] getParticleGroupList() {
-        return m_groupBuffer;
+    public ParticleGroup getParticleGroupList() { // I think this is a bug...
+        return m_groupList;
     }
 
     public int getParticleCount() {
@@ -1696,6 +1686,14 @@ public class ParticleSystem {
 
     public void setParticleUserDataBuffer(Object[] buffer, int capacity) {
         setParticleBuffer(m_userDataBuffer, buffer, capacity);
+    }
+
+    public Pair[] getPairBuffer() {
+        return m_pairBuffer;
+    }
+
+    public void setPairBuffer(Pair[] m_pairBuffer) {
+        this.m_pairBuffer = m_pairBuffer;
     }
 
     private static final int lowerBound(Proxy[] ray, int length, long tag) {
@@ -1920,10 +1918,10 @@ public class ParticleSystem {
      * Connection between two particles
      */
     public static class Pair {
-        int indexA, indexB;
-        int flags;
-        float strength;
-        float distance;
+        public int indexA, indexB;
+        public int flags;
+        public float strength;
+        public float distance;
     }
 
     /**

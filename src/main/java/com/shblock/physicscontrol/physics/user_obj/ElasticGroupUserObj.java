@@ -3,12 +3,15 @@ package com.shblock.physicscontrol.physics.user_obj;
 import com.shblock.physicscontrol.Config;
 import com.shblock.physicscontrol.physics.material.Material;
 import com.shblock.physicscontrol.physics.util.NBTSerializer;
+import com.shblock.physicscontrol.physics.util.ParticleHelper;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.util.INBTSerializable;
+import org.jbox2d.common.Settings;
 import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.World;
 import org.jbox2d.particle.ParticleGroup;
+import org.jbox2d.particle.ParticleType;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -39,7 +42,7 @@ public class ElasticGroupUserObj implements INBTSerializable<CompoundNBT> {
     private int[] mesh;
     private Material material;
 
-    private int lastParticleCount;
+//    private int lastParticleCount;
 
     public ElasticGroupUserObj() {}
 
@@ -48,35 +51,60 @@ public class ElasticGroupUserObj implements INBTSerializable<CompoundNBT> {
 
         instance.material = material;
 
-        instance.lastParticleCount = group.getParticleCount();
+//        instance.lastParticleCount = group.getParticleCount();
 
         instance.buildMesh(world, group);
 
         return instance;
     }
 
-    private void buildMesh(World world, ParticleGroup group) {
+    private static boolean isBelowOffset(float a, float b, float maxOffset) {
+        return Math.abs(a - b) < maxOffset;
+    }
+
+    private static void addIfNotBelowOffset(float num, List<Float> list, float maxOffset) {
+        for (float n : list) {
+            if (isBelowOffset(n, num, maxOffset)) {
+                return;
+            }
+        }
+        list.add(num);
+    }
+
+    private static int indexBelowOffset(float num, List<Float> list, float maxOffset) {
+        for (int i=0; i<list.size(); i++) {
+            if (isBelowOffset(list.get(i), num, maxOffset)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public void buildMesh(World world, ParticleGroup group) {
         if (group.getParticleCount() < 3) {
             this.uvArray = new Vec2[0];
             this.mesh = new int[0];
             return;
         }
 
+        float maxOffset = Settings.particleStride * world.getParticleRadius() / 2F;
+
         int first = group.getBufferIndex();
         int last = first + group.getParticleCount();
-        Vec2[] posBuf = world.getParticlePositionBuffer();
+//        Vec2[] posBuf = world.getParticlePositionBuffer();
         Object[] objBuf = world.getParticleUserDataBuffer();
+        int[] flagsBuf = world.getParticleFlagsBuffer();
 
         List<Float> cols = new ArrayList<>();
         List<Float> rows = new ArrayList<>();
         for (int i=first; i<last; i++) {
-            Vec2 pos = posBuf[i];
-            if (!cols.contains(pos.x)) {
-                cols.add(pos.x);
+            if (!ParticleHelper.isValidParticle(flagsBuf, i)) {
+                continue;
             }
-            if (!rows.contains(pos.y)) {
-                rows.add(pos.y);
-            }
+//            Vec2 pos = posBuf[i];
+            ElasticParticleUserObj o = (ElasticParticleUserObj) objBuf[i];
+            addIfNotBelowOffset(o.u, cols, maxOffset);
+            addIfNotBelowOffset(o.v, rows, maxOffset);
         }
         cols.sort(Float::compare);
         rows.sort(Float::compare);
@@ -87,14 +115,17 @@ public class ElasticGroupUserObj implements INBTSerializable<CompoundNBT> {
         }
         List<Vec2> uvList = new ArrayList<>();
         for (int i=first; i<last; i++) {
-            Vec2 pos = posBuf[i];
-            int col = cols.indexOf(pos.x);
-            int row = rows.indexOf(pos.y);
+            if (!ParticleHelper.isValidParticle(flagsBuf, i)) {
+                continue;
+            }
+//            Vec2 pos = posBuf[i];
+            ElasticParticleUserObj obj = (ElasticParticleUserObj) objBuf[i];
+            int col = indexBelowOffset(obj.u, cols, maxOffset);
+            int row = indexBelowOffset(obj.v, rows, maxOffset);
             if (col == -1 || row == -1) {
                 assert false : "col: " + col + ", row: " + row;
                 continue;
             }
-            ElasticParticleUserObj obj = (ElasticParticleUserObj) objBuf[i];
             uvList.add(new Vec2(obj.u, obj.v));
             int index = uvList.size() - 1;
             obj.uvIndex = index;
@@ -105,15 +136,15 @@ public class ElasticGroupUserObj implements INBTSerializable<CompoundNBT> {
         List<Integer> meshList = new ArrayList<>();
         for (int y=0; y<rows.size() - 1; y++) {
             for (int x=0; x<cols.size() - 1; x++) {
-                int ll = map[x    ][y    ];
-                int ul = map[x + 1][y    ];
-                int lu = map[x    ][y + 1];
-                int uu = map[x + 1][y + 1];
+                int ll = map[x  ][y  ];
+                int ul = map[x+1][y  ];
+                int lu = map[x  ][y+1];
+                int uu = map[x+1][y+1];
 
-                int key = (ll == -1 ? 0 : 1) +
-                          (ul == -1 ? 0 : 2) +
-                          (lu == -1 ? 0 : 4) +
-                          (uu == -1 ? 0 : 8);
+                int key = ((ll == -1) ? 0 : 8) +
+                          ((ul == -1) ? 0 : 4) +
+                          ((lu == -1) ? 0 : 2) +
+                          ((uu == -1) ? 0 : 1);
                 for (int vertex : getVertexes(key)) {
                     switch (vertex) {
                         case 0:
@@ -138,18 +169,25 @@ public class ElasticGroupUserObj implements INBTSerializable<CompoundNBT> {
         }
     }
 
-    /**
-     * Rebuild the mesh if current particle count in the group not equals lastParticleCount
-     * @return if the mesh has been rebuilt
-     */
-    public boolean update(World world, ParticleGroup group) {
-        if (group.getParticleCount() != lastParticleCount) {
-            lastParticleCount = group.getParticleCount();
-            buildMesh(world, group);
-            return true;
-        }
-        return false;
-    }
+//    private static int getValidParticleCount(World world, ParticleGroup group) {
+//        int cnt = 0;
+//        int first = group.getBufferIndex();
+//        int last = first + group.getParticleCount();
+//        for (int i=0; i<)
+//    }
+//
+//    /**
+//     * Rebuild the mesh if current particle count in the group not equals lastParticleCount
+//     * @return if the mesh has been rebuilt
+//     */
+//    public boolean update(World world, ParticleGroup group) {
+//        if (group.getParticleCount() != lastParticleCount) {
+//            lastParticleCount = group.getParticleCount();
+//            buildMesh(world, group);
+//            return true;
+//        }
+//        return false;
+//    }
 
     public Material getMaterial() {
         return material;
