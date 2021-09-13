@@ -677,7 +677,7 @@ public class EditOperations2D {
 
         @Override
         public void execute(Body body, BodyUserObj obj) {
-            body.setType(BodyType.STATIC);
+            body.setType(isStatic ? BodyType.STATIC : BodyType.DYNAMIC);
         }
 
         @Override

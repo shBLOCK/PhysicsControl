@@ -6,17 +6,15 @@ import com.shblock.physicscontrol.physics.util.NBTSerializer;
 import com.shblock.physicscontrol.physics.util.ParticleHelper;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.common.util.INBTSerializable;
 import org.jbox2d.common.Settings;
 import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.World;
 import org.jbox2d.particle.ParticleGroup;
-import org.jbox2d.particle.ParticleType;
 
 import javax.annotation.Nullable;
 import java.util.*;
 
-public class ElasticGroupUserObj implements INBTSerializable<CompoundNBT> {
+public class ElasticGroupUserObj extends UserObjBase {
     /**
      * 0b0123   int[]{0, 1, 2, 3}
      *
@@ -38,16 +36,24 @@ public class ElasticGroupUserObj implements INBTSerializable<CompoundNBT> {
         return DATA.getOrDefault(key, DEFAULT);
     }
 
+    private String name;
     private Vec2[] uvArray;
     private int[] mesh;
     private Material material;
 
 //    private int lastParticleCount;
 
-    public ElasticGroupUserObj() {}
+    public ElasticGroupUserObj() {
+        super(0);
+    }
 
-    public static ElasticGroupUserObj create(World world, ParticleGroup group, @Nullable Material material) {
-        ElasticGroupUserObj instance = new ElasticGroupUserObj();
+    public ElasticGroupUserObj(int id, String name) {
+        super(id);
+        this.name = name;
+    }
+
+    public static ElasticGroupUserObj create(int id, String name, World world, ParticleGroup group, @Nullable Material material) {
+        ElasticGroupUserObj instance = new ElasticGroupUserObj(id, name);
 
         instance.material = material;
 

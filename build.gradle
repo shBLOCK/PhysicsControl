@@ -182,7 +182,7 @@ repositories {
 }
 
 ext {
-    imguiVersion = "1.83.3"
+    imguiVersion = "1.84.1.0"
     gdxVersion = '1.10.0'
     box2DLightsVersion = '1.5'
 }

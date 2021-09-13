@@ -12,8 +12,13 @@ import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid = PhysicsControl.MODID)
 public class ClientProxy {
+    private static void registerTexture(String name, String path) {
+        Minecraft.getInstance().getTextureManager().register(new ResourceLocation(PhysicsControl.MODID, name), new SimpleTexture(new ResourceLocation(PhysicsControl.MODID, "textures/" + path + ".png")));
+    }
+
     public static void setup() {
-        Minecraft.getInstance().getTextureManager().register(new ResourceLocation(PhysicsControl.MODID, "icons"), new SimpleTexture(new ResourceLocation(PhysicsControl.MODID, "textures/gui/icons.png")));
+        registerTexture("icons", "gui/icons");
+        registerTexture("widgets", "gui/widgets");
     }
 
     @SubscribeEvent

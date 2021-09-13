@@ -78,7 +78,7 @@ public class CommandBodyToElastic extends PhysicsCommandBase {
             userObjBuf[index] = new ElasticParticleUserObj(localPos.x, localPos.y);
         }
 
-        group.setUserData(ElasticGroupUserObj.create(world, group, obj.getMaterial()));
+        group.setUserData(ElasticGroupUserObj.create(simulator.nextGroupId(), obj.getName(), world, group, obj.getMaterial()));
 
         simulator.deleteBodyLocal(body);
     }

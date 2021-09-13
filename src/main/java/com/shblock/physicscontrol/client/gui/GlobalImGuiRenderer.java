@@ -21,6 +21,7 @@ import org.apache.logging.log4j.Level;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.util.Arrays;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.glfw.GLFW.glfwGetClipboardString;
@@ -31,7 +32,7 @@ public class GlobalImGuiRenderer {
     private static ImGuiImplGlfw imGuiGlfw;
     private static ImGuiImplGl3 imGuiGl3;
     public static ImGuiIO io;
-    private static final String GLSL_VERSION = "#version 110";
+    private static final String GLSL_VERSION = "#version 430";
     private static final Path FONTS_PATH = ModList.get()
             .getModFileById(PhysicsControl.MODID)
             .getFile()
@@ -40,6 +41,9 @@ public class GlobalImGuiRenderer {
             .resolve(PhysicsControl.MODID)
             .resolve("fonts");
     private static final String DEFAULT_FONT_NAME = "unifont.ttf";
+    private static final int[] GLYPH_RANGES = new int[]{
+            0, 0xFFFF
+    };
 
     private boolean needClose = false;
 
@@ -103,12 +107,12 @@ public class GlobalImGuiRenderer {
             }
         });
 
-//        glfwSetMonitorCallback((windowId, event) -> {
-//            if (isImGuiOpened()) {
-//                imGuiGlfw.monitorCallback(windowId, event);
-//                //TODO: add mc's MonitorHandler.onMonitorChange() callback function back?
-//            }
-//        });
+        glfwSetMonitorCallback((windowId, event) -> {
+            if (isImGuiOpened()) {
+                imGuiGlfw.monitorCallback(windowId, event);
+                //TODO: add mc's MonitorHandler.onMonitorChange() callback function back?
+            }
+        });
 
         io.setSetClipboardTextFn(new ImStrConsumer() {
             @Override
@@ -131,39 +135,44 @@ public class GlobalImGuiRenderer {
 
         final ImFontAtlas fontAtlas = io.getFonts();
 
-        short[] glyphRanges = {Short.MIN_VALUE, -1, 1, Short.MAX_VALUE, 0};
+        short[] glyphRanges = {Short.MIN_VALUE, -1, 1, Short.MAX_VALUE};
+        System.out.println(Arrays.toString(fontAtlas.getGlyphRangesChineseFull()));
+//        short[] glyphRanges = fontAtlas.getGlyphRangesChineseFull();
+//        short[] glyphRanges = new short[GLYPH_RANGES.length + 1];
+//        for (int i=0; i<GLYPH_RANGES.length; i++) {
+//            glyphRanges[i] = (short) (GLYPH_RANGES[i] + Short.MIN_VALUE);
+//        }
+//        glyphRanges[GLYPH_RANGES.length] = 0; // just to make sure
 
         ImFontConfig fontConfig = new ImFontConfig();
         fontConfig.setPixelSnapH(true);
         fontConfig.setGlyphRanges(glyphRanges);
         String default_font_path = FONTS_PATH.resolve(DEFAULT_FONT_NAME).toString();
         fontAtlas.addFontFromFileTTF(default_font_path, 16, fontConfig);
-        fontAtlas.addFontFromFileTTF(default_font_path, 8, fontConfig);
-        fontAtlas.addFontFromFileTTF(default_font_path, 24, fontConfig);
-        fontAtlas.addFontFromFileTTF(default_font_path, 32, fontConfig);
         PhysicsControl.log(Level.INFO, "Loaded default font file: " + DEFAULT_FONT_NAME);
 
-        File[] files = FONTS_PATH.toFile().listFiles();
-        if (files != null) {
-            for (File file : files) {
-                if (file.isFile() && file.exists()) {
-                    if (file.getName().equals(DEFAULT_FONT_NAME)) {
-                        continue;
-                    }
-                    fontAtlas.addFontFromFileTTF(file.toString(), 16, fontConfig);
-                    fontAtlas.addFontFromFileTTF(file.toString(), 8, fontConfig);
-                    fontAtlas.addFontFromFileTTF(file.toString(), 24, fontConfig);
-                    fontAtlas.addFontFromFileTTF(file.toString(), 32, fontConfig);
-                    PhysicsControl.log(Level.INFO, "Loaded font file: " + file.getName());
-                }
-            }
-        }
+//        File[] files = FONTS_PATH.toFile().listFiles();
+//        if (files != null) {
+//            for (File file : files) {
+//                if (file.isFile() && file.exists()) {
+//                    if (file.getName().equals(DEFAULT_FONT_NAME)) {
+//                        continue;
+//                    }
+//                    fontAtlas.addFontFromFileTTF(file.toString(), 16, fontConfig);
+//                    PhysicsControl.log(Level.INFO, "Loaded font file: " + file.getName());
+//                }
+//            }
+//        }
+
         fontConfig.destroy();
 
         imGuiGlfw.init(windowPtr, false);
         imGuiGl3.init(GLSL_VERSION);
 
         ImPlot.createContext();
+
+        startFrame();
+        endFrame();
     }
 
     private ImGuiBase getCurrentImGuiScreen() {
@@ -285,9 +294,9 @@ public class GlobalImGuiRenderer {
             this.needClose = true;
             startFrame();
 //            setupDockSpace();
-            ImGui.pushStyleColor(ImGuiCol.WindowBg, 15, 15, 15, 240);
+//            ImGui.pushStyleColor(ImGuiCol.WindowBg, 15, 15, 15, 240);
             getCurrentImGuiScreen().buildImGui();
-            ImGui.popStyleColor(1);
+//            ImGui.popStyleColor(1);
 //            ImGui.popStyleColor(1); //pop ImGuiCol.ChildBg in setupDockspace()
             endFrame();
         }

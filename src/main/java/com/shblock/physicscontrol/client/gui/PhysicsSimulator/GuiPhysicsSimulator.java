@@ -6,6 +6,7 @@ import com.shblock.physicscontrol.client.I18nHelper;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
 import com.shblock.physicscontrol.client.gui.GlobalImGuiRenderer;
 import com.shblock.physicscontrol.client.gui.ImGuiBase;
+import com.shblock.physicscontrol.client.gui.ImGuiUtil;
 import com.shblock.physicscontrol.client.gui.RenderHelper;
 import com.shblock.physicscontrol.command.*;
 import com.shblock.physicscontrol.physics.user_obj.BodyUserObj;
@@ -38,7 +39,6 @@ import org.jbox2d.particle.ParticleGroup;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -173,6 +173,9 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
     @Override
     public void render(MatrixStack matrixStack, int combinedLight, int combinedOverlay, float particleTick) {
         super.render(matrixStack, combinedLight, combinedOverlay, particleTick);
+
+        renderSpaceBackground(matrixStack);
+
         getSimulator().frame(particleTick);
 
         ParticleRender2D.renderParticles(this.width, this.height, this.globalTranslate, this.globalScale, getSimulator().getSpace(), this.config);
@@ -195,6 +198,13 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                 this.particleToolGui.execute(this, getSimulator(), toSpacePos(currentMouseX, currentMouseY), operation, this.config);
             }
         }
+    }
+
+    private void renderSpaceBackground(MatrixStack matrixStack) {
+        matrixStack.pushPose();
+        matrixStack.translate(0F, 0F, -1000F);
+        RenderHelper.drawBox(matrixStack.last().pose(), 0F, 0F, this.width, this.height, 0.45F, 0.54F, 1F, 1F);
+        matrixStack.popPose();
     }
 
     private void renderSpace(MatrixStack matrixStack, World space) {
@@ -422,6 +432,8 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
 
     @Override
     public void buildImGui() {
+        ImGuiUtil.syncScaleWithMC();
+
         ImGui.showDemoWindow();
 
         ToolEditGui newGui = ImGuiBuilder.buildToolSelectorUI();

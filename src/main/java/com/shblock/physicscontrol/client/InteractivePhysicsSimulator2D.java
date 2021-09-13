@@ -6,6 +6,7 @@ import com.shblock.physicscontrol.client.gui.PhysicsSimulator.GuiSimulatorContac
 import com.shblock.physicscontrol.command.*;
 import com.shblock.physicscontrol.physics.user_obj.BodyUserObj;
 import com.shblock.physicscontrol.physics.user_obj.ElasticGroupUserObj;
+import com.shblock.physicscontrol.physics.user_obj.UserObjBase;
 import com.shblock.physicscontrol.physics.util.BodyHelper;
 import com.shblock.physicscontrol.physics.util.NBTSerializer;
 import net.minecraft.nbt.CompoundNBT;
@@ -29,7 +30,8 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
     private static InteractivePhysicsSimulator2D currentInstance;
 
     private World space;
-    private int currentId = -1;
+    private int currentBodyId = -1;
+    private int currentGroupId = -1;
     private boolean simulationRunning;
 
     public enum StepModes {
@@ -43,6 +45,7 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
     private float singleStepLength = 1F / 60F;
     private CommandHistory commandHistory;
     private final Map<Integer, Body> idBodyMap = new HashMap<>();
+    private final Map<Integer, ParticleGroup> idGroupMap = new HashMap<>();
     private final List<Body> selectedBodies = new ArrayList<>(); //TODO: store only id when serializing
 //    private final Set<Integer> selectedParticles = new HashSet<>();
 
@@ -108,7 +111,7 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
     }
 
     public void forEachBody(Consumer<Body> consumer) {
-        for (int i=0; i<=this.currentId; i++) { // Because we might delete bodies in the idBodyMap while iterating
+        for (int i=0; i<=this.currentBodyId; i++) { // Because we might delete bodies in the idBodyMap while iterating
             Body body = getBodyFromId(i);
             if (body != null) {
                 consumer.accept(body);
@@ -193,7 +196,6 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
         executeCommand(new CommandPasteBodies(nbt, mousePos));
     }
 
-
     public void pasteBodiesLocal(CompoundNBT nbt, Vec2 mousePos) {
         Vec2 posDelta = mousePos.sub(NBTSerializer.vec2FromNBT(nbt.getCompound("mouse_pos")));
 
@@ -206,7 +208,7 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
         for (int i=0; i<bodies.size(); i++) {
             BodyDef body = bodies.get(i);
             if (body.userData instanceof BodyUserObj) {
-                ((BodyUserObj) body.userData).setId(nextId());
+                ((BodyUserObj) body.userData).setId(nextBodyId());
                 body.position.addLocal(posDelta);
                 Body result = addBodyLocal(body, list.getCompound(i));
                 select(result);
@@ -252,6 +254,10 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
         }
     }
 
+    public ParticleGroup getGroupFromId(int id) {
+        return this.idGroupMap.get(id);
+    }
+
     public void addParticleLocal(ParticleDef def) {
         getSpace().createParticle(def);
     }
@@ -290,11 +296,21 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
     }
 
     public ParticleGroup addParticleGroupLocal(ParticleGroupDef def) {
-        return getSpace().createParticleGroup(def);
+        def.destroyAutomatically = true; // Other wise we can't delete a particle group.
+        ParticleGroup group = getSpace().createParticleGroup(def);
+        assert !(group.getUserData() instanceof UserObjBase);
+        this.idGroupMap.put(((UserObjBase) group.getUserData()).getId(), group);
+        return group;
     }
 
     public void joinParticleGroupLocal(ParticleGroup a, ParticleGroup b) {
         getSpace().joinParticleGroups(a, b);
+        this.idGroupMap.remove(((UserObjBase) b.getUserData()).getId());
+    }
+
+    public void deleteParticleGroupLocal(ParticleGroup group) {
+        getSpace().destroyParticlesInGroup(group);
+        this.idGroupMap.remove(((UserObjBase) group.getUserData()).getId());
     }
 
     public List<Body> pointTest(Vec2 point) {
@@ -450,12 +466,12 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
         this.simulationSpeed = simulationSpeed;
     }
 
-    public int getCurrentId() {
-        return currentId;
+    public int getCurrentBodyId() {
+        return currentBodyId;
     }
 
-    public void setCurrentId(int currentId) {
-        this.currentId = currentId;
+    public void setCurrentBodyId(int currentId) {
+        this.currentBodyId = currentId;
     }
 
     public CommandHistory getCommandHistory() {
@@ -470,20 +486,26 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
         return singleStepLength;
     }
 
-    public int nextId() {
-        this.currentId++;
-        return this.currentId;
+    public int nextBodyId() {
+        this.currentBodyId++;
+        return this.currentBodyId;
+    }
+
+    public int nextGroupId() {
+        this.currentGroupId++;
+        return this.currentGroupId;
     }
 
     public BodyUserObj getNextUserObj(String name) {
-        return new BodyUserObj(InteractivePhysicsSimulator2D.getInstance().nextId(), name);
+        return new BodyUserObj(InteractivePhysicsSimulator2D.getInstance().nextBodyId(), name);
     }
 
     @Override
     public CompoundNBT serializeNBT() {
         CompoundNBT nbt = new CompoundNBT();
         nbt.put("space", NBTSerializer.toNBT(this.space));
-        nbt.putInt("current_id", this.currentId);
+        nbt.putInt("current_body_id", this.currentBodyId);
+        nbt.putInt("current_group_id", this.currentGroupId);
         nbt.putInt("step_mode", this.stepMode.ordinal());
         nbt.putInt("velocity_iterations", this.velocityIterations);
         nbt.putInt("position_iterations", this.positionIterations);
@@ -508,7 +530,8 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
     public void deserializeNBT(CompoundNBT nbt) {
         this.space = NBTSerializer.spaceFromNBT(nbt.getCompound("space"));
         initSpace();
-        this.currentId = nbt.getInt("current_id");
+        this.currentBodyId = nbt.getInt("current_body_id");
+        this.currentGroupId = nbt.getInt("current_group_id");
         this.simulationRunning = false;
         this.stepMode = StepModes.values()[nbt.getInt("step_mode")];
         this.velocityIterations = nbt.getInt("velocity_iterations");

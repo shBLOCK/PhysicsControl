@@ -3,16 +3,18 @@ package com.shblock.physicscontrol.client.gui.PhysicsSimulator;
 import com.mojang.blaze3d.matrix.MatrixStack;
 import com.shblock.physicscontrol.client.I18nHelper;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
+import com.shblock.physicscontrol.client.gui.ImGuiImpl;
 import com.shblock.physicscontrol.client.gui.RenderHelper;
 import com.shblock.physicscontrol.command.CommandCreateParticles;
 import com.shblock.physicscontrol.command.CommandDeleteParticles;
 import com.shblock.physicscontrol.command.CommandEditParticles;
+import com.shblock.physicscontrol.physics.user_obj.ElasticGroupUserObj;
+import com.shblock.physicscontrol.physics.user_obj.UserObjBase;
 import com.shblock.physicscontrol.physics.util.ParticleHelper;
+import imgui.ImDrawList;
 import imgui.ImGui;
-import imgui.flag.ImGuiColorEditFlags;
-import imgui.flag.ImGuiDataType;
-import imgui.flag.ImGuiSliderFlags;
-import imgui.flag.ImGuiTabBarFlags;
+import imgui.flag.*;
+import imgui.type.ImBoolean;
 import imgui.type.ImFloat;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.util.math.vector.Matrix4f;
@@ -39,17 +41,19 @@ public class ParticleToolGui {
     public void buildImGui(InteractivePhysicsSimulator2D simulator, SimulatorConfig config) {
         if (ImGui.begin(I18n.get(PREFIX + "window"))) {
             if (ImGui.beginTabBar("##tab_bar", ImGuiTabBarFlags.NoCloseWithMiddleMouseButton)) {
+                ImDrawList drawList = ImGuiImpl.getDrawListForImpl();
+
                 if (ImGui.beginTabItem(I18n.get(PREFIX + "tab.tools"))) {
                     // Tool Size
                     ImGui.text(I18n.get(PREFIX + "tab.tools.size"));
                     ImGui.sameLine();
                     ImFloat size = new ImFloat(config.particleToolSize);
-                    if (ImGui.sliderScalar("##tool_size", ImGuiDataType.Float, size, 0.1F, 10F, I18nHelper.localizeNumFormat(PREFIX + "tab.tools.size.num"))) {
+                    if (ImGuiImpl.sliderScalar(drawList, "##tool_size", ImGuiDataType.Float, size, 0.1F, 10F, I18nHelper.localizeNumFormat(PREFIX + "tab.tools.size.num"))) {
                         config.particleToolSize = size.get();
                     }
 
                     // Particle Color
-                    if (ImGui.checkbox(I18n.get(PREFIX + "tab.tools.set_color"), config.particleToolSetColor)) {
+                    if (ImGuiImpl.checkbox(drawList, I18n.get(PREFIX + "tab.tools.set_color"), config.particleToolSetColor)) {
                         config.particleToolSetColor = !config.particleToolSetColor;
                     }
                     if (config.particleToolSetColor) {
@@ -57,7 +61,7 @@ public class ParticleToolGui {
                     }
 
                     // Particle Flags
-                    if (ImGui.checkbox(I18n.get(PREFIX + "tab.tools.set_flags"), config.particleToolSetFlags))  {
+                    if (ImGuiImpl.checkbox(drawList, I18n.get(PREFIX + "tab.tools.set_flags"), config.particleToolSetFlags))  {
                         config.particleToolSetFlags = !config.particleToolSetFlags;
                     }
                     if (config.particleToolSetFlags) {
@@ -80,53 +84,60 @@ public class ParticleToolGui {
                     ImGui.text(I18n.get(PREFIX + "tab.rendering.slb"));
                     ImGui.sameLine();
                     ImFloat slb = new ImFloat(config.particleRenderSmoothLowerBound);
-                    if (ImGui.sliderScalar("##smooth_lower", ImGuiDataType.Float, slb, 0F, config.particleRenderSmoothUpperBound, "%.2F", ImGuiSliderFlags.AlwaysClamp)) {
+                    if (ImGuiImpl.sliderScalar(drawList, "##smooth_lower", ImGuiDataType.Float, slb, 0F, config.particleRenderSmoothUpperBound, "%.2F", ImGuiSliderFlags.AlwaysClamp)) {
                         config.particleRenderSmoothLowerBound = slb.get();
                     }
 
                     ImGui.text(I18n.get(PREFIX + "tab.rendering.sub"));
                     ImGui.sameLine();
                     ImFloat sub = new ImFloat(config.particleRenderSmoothUpperBound);
-                    if (ImGui.sliderScalar("##smooth_upper", ImGuiDataType.Float, sub, config.particleRenderSmoothLowerBound, 10F, "%.2F", ImGuiSliderFlags.AlwaysClamp)) {
+                    if (ImGuiImpl.sliderScalar(drawList, "##smooth_upper", ImGuiDataType.Float, sub, config.particleRenderSmoothLowerBound, 10F, "%.2F", ImGuiSliderFlags.AlwaysClamp)) {
                         config.particleRenderSmoothUpperBound = sub.get();
                     }
 
                     ImGui.text(I18n.get(PREFIX + "tab.rendering.blb"));
                     ImGui.sameLine();
                     ImFloat blb = new ImFloat(config.particleRenderBorderLowerBound);
-                    if (ImGui.sliderScalar("##border_lower", ImGuiDataType.Float, blb, 0F, config.particleRenderBorderUpperBound, "%.2F", ImGuiSliderFlags.AlwaysClamp)) {
+                    if (ImGuiImpl.sliderScalar(drawList, "##border_lower", ImGuiDataType.Float, blb, 0F, config.particleRenderBorderUpperBound, "%.2F", ImGuiSliderFlags.AlwaysClamp)) {
                         config.particleRenderBorderLowerBound = blb.get();
                     }
 
                     ImGui.text(I18n.get(PREFIX + "tab.rendering.bub"));
                     ImGui.sameLine();
                     ImFloat bub = new ImFloat(config.particleRenderBorderUpperBound);
-                    if (ImGui.sliderScalar("##border_upper", ImGuiDataType.Float, bub, config.particleRenderBorderLowerBound, 1F, "%.2F", ImGuiSliderFlags.AlwaysClamp)) {
+                    if (ImGuiImpl.sliderScalar(drawList, "##border_upper", ImGuiDataType.Float, bub, config.particleRenderBorderLowerBound, 1F, "%.2F", ImGuiSliderFlags.AlwaysClamp)) {
                         config.particleRenderBorderUpperBound = bub.get();
                     }
 
-                    if (ImGui.button(I18n.get(PREFIX + "tab.rendering.reset"))) { // Probably can be improved
+                    if (ImGuiImpl.button(drawList, I18n.get(PREFIX + "tab.rendering.reset"))) { // Probably can be improved
                         config.resetParticleRender();
                     }
 
                     ImGui.endTabItem();
                 }
 
-//                if (ImGui.beginTabItem(I18n.get(PREFIX + "tab.groups"))) {
-//                    if (ImGui.beginListBox("##groups")) {
-//                        World world = simulator.getSpace();
-//                        ParticleGroup group = world.getParticleGroupList();
-//                        while (group != null) {
-//                            ImGui.sele
-//                        }
-//
-//                        ImGui.endListBox();
-//                    }
-//
-//                    ImGui.separator();
-//
-//                    ImGui.endTabItem();
-//                }
+                if (ImGui.beginTabItem(I18n.get(PREFIX + "tab.groups"))) {
+                    if (ImGui.beginListBox("##groups")) {
+                        World world = simulator.getSpace();
+                        ParticleGroup group = world.getParticleGroupList();
+                        while (group != null) {
+                            if (group.getUserData() instanceof ElasticGroupUserObj) {
+                                ElasticGroupUserObj elastic = (ElasticGroupUserObj) group.getUserData();
+                                ImGui.pushID(elastic.getId());
+//                                ImGuiImpl.selectable(drawList, "", new ImBoolean(), );
+                                ImGui.popID();
+                            }
+
+                            group = group.getNext();
+                        }
+
+                        ImGui.endListBox();
+                    }
+
+                    ImGuiImpl.separator(drawList);
+
+                    ImGui.endTabItem();
+                }
 
                 ImGui.endTabBar();
             }
@@ -136,8 +147,10 @@ public class ParticleToolGui {
     }
 
     private void addFlagSelector(SimulatorConfig config, int flag, String name) {
+        ImDrawList drawList = ImGuiImpl.getDrawListForImpl();
+
         boolean haveFlag = (config.particleToolFlags & flag) != 0;
-        if (ImGui.checkbox(name, haveFlag)) {
+        if (ImGuiImpl.checkbox(drawList, name, haveFlag)) {
             if (haveFlag) {
                 config.particleToolFlags -= flag;
             } else {

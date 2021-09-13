@@ -1,7 +1,6 @@
 package com.shblock.physicscontrol.physics.user_obj;
 
 import com.shblock.physicscontrol.Config;
-import com.shblock.physicscontrol.physics.UserObjBase;
 import com.shblock.physicscontrol.physics.material.Material;
 import com.shblock.physicscontrol.physics.util.BodyHelper;
 import com.shblock.physicscontrol.physics.util.NBTSerializer;
@@ -25,6 +24,7 @@ import java.util.Random;
 import static org.lwjgl.opengl.GL11.*;
 
 public class BodyUserObj extends UserObjBase {
+    protected static final Random RANDOM = new Random();
     private static final Random SOUND_RANDOMIZER = new Random();
 
     private String name;

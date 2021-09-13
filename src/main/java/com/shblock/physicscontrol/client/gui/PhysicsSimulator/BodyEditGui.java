@@ -7,6 +7,8 @@ import com.shblock.physicscontrol.PhysicsControl;
 import com.shblock.physicscontrol.client.I18nHelper;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
 import com.shblock.physicscontrol.client.gui.GlobalImGuiRenderer;
+import com.shblock.physicscontrol.client.gui.ImGuiImpl;
+import com.shblock.physicscontrol.client.gui.ImGuiUtil;
 import com.shblock.physicscontrol.client.gui.RenderHelper;
 import com.shblock.physicscontrol.command.CommandBodyToElastic;
 import com.shblock.physicscontrol.command.CommandDeleteBodies;
@@ -16,10 +18,7 @@ import com.shblock.physicscontrol.physics.material.Material;
 import com.shblock.physicscontrol.physics.user_obj.BodyUserObj;
 import com.shblock.physicscontrol.physics.util.NBTSerializer;
 import com.shblock.physicscontrol.physics.util.ShapeHelper;
-import imgui.ImColor;
-import imgui.ImGui;
-import imgui.ImVec2;
-import imgui.ImVec4;
+import imgui.*;
 import imgui.extension.implot.ImPlot;
 import imgui.flag.*;
 import imgui.type.ImBoolean;
@@ -52,6 +51,7 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
     private boolean moveToMouse = true;
     private boolean displayMainWindow = true;
     private int bodyId;
+//    private boolean isFirstFrame = true;
 
     private List<Module> mainWindowModules = new ArrayList<>();
     private Map<Integer, Module> modules = new HashMap<>();
@@ -71,6 +71,8 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
     }
 
     public boolean buildImGui() {
+        ImDrawList drawList = ImGuiImpl.getDrawListForImpl();
+
         Body body = InteractivePhysicsSimulator2D.getInstance().getBodyFromId(this.bodyId);
         if (body == null) {
             return false;
@@ -83,11 +85,14 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
                 ImGui.setNextWindowPos(ImGui.getMousePosX(), ImGui.getMousePosY());
                 this.moveToMouse = false;
             }
-            boolean shouldBuild = ImGui.begin(I18n.get("physicscontrol.gui.sim.edit.title", obj.getName()) + "###" + "edit_gui_" + bodyId, pOpen, ImGuiWindowFlags.None);
+            boolean shouldBuild = ImGuiImpl.beginWithBg(I18n.get("physicscontrol.gui.sim.edit.title", obj.getName()) + "###" + "edit_gui_" + bodyId, pOpen, ImGuiWindowFlags.None);
             if (pOpen.get()) {
                 if (shouldBuild) {
                     for (Module module : this.mainWindowModules) {
-                        boolean shouldBuildModule = ImGui.collapsingHeader(I18n.get("physicscontrol.gui.sim.edit.module." + module.getId()) + "###" + module.getId());
+                        boolean shouldBuildModule = ImGuiImpl.collapsingHeader(drawList, I18n.get("physicscontrol.gui.sim.edit.module." + module.getId()) + "###" + module.getId());
+//                        if (isFirstFrame)
+//                            ImGuiImpl.setNextWindowCollapsed();
+//                        boolean shouldBuildModule = ImGuiImpl.beginChildWithBg(I18n.get("physicscontrol.gui.sim.edit.module." + module.getId()) + "###" + module.getId(), ImGui.getWindowWidth(), 64);
                         if (ImGui.isItemClicked() && GlobalImGuiRenderer.io.getKeyShift()) {
                             try {
                                 addModule(module.getClass().newInstance());
@@ -98,11 +103,11 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
                         }
                         if (shouldBuildModule) {
                             module.build(this, body, obj);
-                            if (InteractivePhysicsSimulator2D.getInstance().getBodyFromId(this.bodyId) == null) {
-                                ImGui.end();
+                            if (InteractivePhysicsSimulator2D.getInstance().getBodyFromId(this.bodyId) == null) { // happens when body has been deleted in the gui
+                                ImGuiImpl.endWithBg();
                                 return false;
                             }
-                            ImGui.separator();
+                            ImGuiImpl.separator(drawList);
                         }
                     }
                 }
@@ -110,7 +115,7 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
                 this.displayMainWindow = false;
             }
 
-            ImGui.end();
+            ImGuiImpl.endWithBg();
         }
 
         List<Integer> toRemove = new ArrayList<>();
@@ -121,10 +126,10 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
             }
             Module module = this.modules.get(windowId);
             ImBoolean pOpen = new ImBoolean(true);
-            boolean shouldRender = ImGui.begin(I18n.get("physicscontrol.gui.sim.edit.module." + module.getId() + "_window", obj.getName()) + "###" + windowId, pOpen);
+            boolean shouldRender = ImGuiImpl.beginWithBg(I18n.get("physicscontrol.gui.sim.edit.module." + module.getId() + "_window", obj.getName()) + "###" + windowId, pOpen);
             if (!pOpen.get()) {
                 toRemove.add(windowId);
-                ImGui.end();
+                ImGuiImpl.endWithBg();
                 continue;
             }
 
@@ -132,7 +137,7 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
                 module.build(this, body, obj);
             }
 
-            ImGui.end();
+            ImGuiImpl.endWithBg();
         }
         for (int id : toRemove) {
             this.modules.remove(id);
@@ -295,18 +300,20 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
 
         @Override
         public void build(BodyEditGui gui, Body body, BodyUserObj obj) {
+            ImDrawList drawList = ImGuiImpl.getDrawListForImpl();
+
             // Name
             ImGui.pushID("name");
             ImGui.alignTextToFramePadding();
             ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.appearance.name"));
             ImGui.sameLine();
             ImString string = new ImString(obj.getName());
-            if (ImGui.inputText("", string, GLOBAL_INPUT_FLAG)) {
+            if (ImGuiImpl.inputText(drawList, "", string, GLOBAL_INPUT_FLAG)) {
                 gui.executeOperation(new EditOperations2D.SetName(string.get()));
             }
             ImGui.popID();
 
-            ImGui.separator();
+            ImGuiImpl.separator(drawList);
 
             // Color
             ImGui.pushID("color");
@@ -316,7 +323,7 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
             }
             ImGui.popID();
 
-            ImGui.separator();
+            ImGuiImpl.separator(drawList);
 
             // Z-Level
             ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.appearance.z_level"));
@@ -340,16 +347,18 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
 
         @Override
         public void build(BodyEditGui gui, Body body, BodyUserObj obj) {
+            ImDrawList drawList = ImGuiImpl.getDrawListForImpl();
+
             boolean isStatic = body.getType() == BodyType.STATIC;
 
             // Material
             buildMaterialSelector(gui, body, obj);
 
-            ImGui.separator();
+            ImGuiImpl.separator(drawList);
 
             // Static
             ImGui.pushID("static");
-            if (ImGui.checkbox(I18n.get("physicscontrol.gui.sim.edit.module.material.static"), isStatic)) {
+            if (ImGuiImpl.checkbox(drawList, I18n.get("physicscontrol.gui.sim.edit.module.material.static"), isStatic)) {
                 gui.executeOperation(new EditOperations2D.SetStatic(!isStatic));
                 isStatic = !isStatic;
             }
@@ -359,7 +368,7 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
                 // Density
                 ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.material.density"));
                 ImFloat density = new ImFloat(body.getFixtureList().getDensity());
-                if (ImGui.sliderScalar("##density", ImGuiDataType.Float, density, 0.001F, 100F, I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.material.density.num"), ImGuiSliderFlags.Logarithmic)) {
+                if (ImGuiImpl.sliderScalar(drawList, "##density", ImGuiDataType.Float, density, 0.001F, 100F, I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.material.density.num"), ImGuiSliderFlags.Logarithmic)) {
                     if (density.get() <= 0F) {
                         density.set(0.001F);
                     }
@@ -369,20 +378,20 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
                 // Mass
                 ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.material.mass"));
                 ImFloat mass = new ImFloat(body.getMass());
-                if (ImGui.sliderScalar("##mass", ImGuiDataType.Float, mass, 0.001F, 1000F, I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.material.mass.num"), ImGuiSliderFlags.Logarithmic)) {
+                if (ImGuiImpl.sliderScalar(drawList, "##mass", ImGuiDataType.Float, mass, 0.001F, 1000F, I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.material.mass.num"), ImGuiSliderFlags.Logarithmic)) {
                     if (mass.get() <= 0F) {
                         mass.set(0.001F);
                     }
                     gui.executeOperation(new EditOperations2D.SetMass(mass.get()));
                 }
 
-                ImGui.separator();
+                ImGuiImpl.separator(drawList);
             }
 
             // Friction
             ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.material.friction"));
             ImFloat friction = new ImFloat(body.getFixtureList().getFriction());
-            if (ImGui.sliderScalar("##friction", ImGuiDataType.Float, friction, 0F, 3F, I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.material.friction.num"), ImGuiSliderFlags.None)) {
+            if (ImGuiImpl.sliderScalar(drawList, "##friction", ImGuiDataType.Float, friction, 0F, 3F, I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.material.friction.num"), ImGuiSliderFlags.None)) {
                 if (friction.get() < 0F) {
                     friction.set(0F);
                 }
@@ -392,7 +401,7 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
             // Restitution
             ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.material.restitution"));
             ImFloat restitution = new ImFloat(body.getFixtureList().getRestitution());
-            if (ImGui.sliderScalar("##restitution", ImGuiDataType.Float, restitution, 0F, 1F, I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.material.restitution.num"), ImGuiSliderFlags.None)) {
+            if (ImGuiImpl.sliderScalar(drawList, "##restitution", ImGuiDataType.Float, restitution, 0F, 1F, I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.material.restitution.num"), ImGuiSliderFlags.None)) {
                 if (restitution.get() < 0F) {
                     restitution.set(0F);
                 }
@@ -401,6 +410,8 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
         }
 
         private void buildMaterialSelector(BodyEditGui gui, Body body, BodyUserObj obj) {
+            ImDrawList drawList = ImGuiImpl.getDrawListForImpl();
+
             ImVec2 windowPos = new ImVec2();
             ImGui.getWindowPos(windowPos);
             ImVec2 windowSize = new ImVec2();
@@ -428,19 +439,24 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
                     }
                 }
                 ImGui.pushID("material_button:" + id.toString());
-                if (selected) {
-                    ImVec4 color = ImGui.getStyle().getColor(ImGuiCol.ButtonActive);
-                    ImGui.pushStyleColor(ImGuiCol.Button, color.x, color.y, color.z, color.w);
-                    if (ImGui.imageButton(image, 32, 32, 0F, 0F, 1F, 1F, 5)) {
-                        gui.executeOperation(new EditOperations2D.SetMaterial(null));
-                        selected = false;
-                    }
-                    ImGui.popStyleColor(1);
-                } else {
-                    if (ImGui.imageButton(image, 32, 32, 0F, 0F, 1F, 1F, 5)) {
-                        gui.executeOperation(new EditOperations2D.SetMaterial(material));
-                        selected = false;
-                    }
+//                if (selected) {
+//                    ImVec4 color = ImGuiBuilder.SELECTED_COLOR;
+//                    ImGui.pushStyleColor(ImGuiCol.Button, color.x, color.y, color.z, color.w);
+//                    if (ImGuiImpl.imageButton(drawList, image, 32, 32, 0F, 0F, 1F, 1F, 5, color)) {
+//                        gui.executeOperation(new EditOperations2D.SetMaterial(null));
+//                        selected = false;
+//                    }
+//                    ImGui.popStyleColor(1);
+//                } else {
+//                    if (ImGuiImpl.imageButton(drawList, image, 32, 32, 0F, 0F, 1F, 1F, 5)) {
+//                        gui.executeOperation(new EditOperations2D.SetMaterial(material));
+//                        selected = false;
+//                    }
+//                }
+                if (ImGuiImpl.selector(drawList, selected, image, 32, 32, 0F, 0F, 1F, 1F, 10)) {
+                    ImGuiImpl.playClickSound();
+                    gui.executeOperation(new EditOperations2D.SetMaterial(selected ? null : material));
+                    selected = false;
                 }
                 ImGui.popID();
 
@@ -482,6 +498,7 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
 
         @Override
         public void build(BodyEditGui gui, Body body, BodyUserObj obj) {
+            ImDrawList drawList = ImGuiImpl.getDrawListForImpl();
             boolean isStatic = body.getType() == BodyType.STATIC;
 
             String apply = I18n.get("physicscontrol.gui.sim.edit.module.movement.apply");
@@ -492,65 +509,65 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
                 ImGui.alignTextToFramePadding();
                 ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.movement.linear_velocity"));
                 ImGui.pushItemWidth(200F);
-                ImGui.dragFloat2("##linear_velocity", linearVelocity, 0.2F, -100F, 100F, I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.movement.linear_velocity.num"), ImGuiSliderFlags.Logarithmic);
-                if (ImGui.button(apply + "##apply_linear_velocity")) {
+                ImGuiImpl.dragFloat2(drawList, "##linear_velocity", linearVelocity, 0.2F, -100F, 100F, I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.movement.linear_velocity.num"), ImGuiSliderFlags.Logarithmic);
+                if (ImGuiImpl.button(drawList, apply + "##apply_linear_velocity")) {
                     gui.executeOperation(new EditOperations2D.SetLinearVelocity(new Vec2(this.linearVelocity[0], this.linearVelocity[1])));
                 }
                 ImGui.popItemWidth();
 
-                ImGui.separator();
+                ImGuiImpl.separator(drawList);
 
                 // Set angular velocity
                 ImGui.alignTextToFramePadding();
                 ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.movement.angular_velocity"));
                 ImGui.pushItemWidth(100F);
-                ImGui.dragFloat("##angular_velocity", angularVelocity, 0.1F, (float) (-Math.PI * 4F), (float) (Math.PI * 4F), I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.movement.angular_velocity.num"), ImGuiSliderFlags.Logarithmic);
-                if (ImGui.button(apply + "##apply_angular_velocity")) {
+                ImGuiImpl.dragFloat(drawList, "##angular_velocity", angularVelocity, 0.1F, (float) (-Math.PI * 4F), (float) (Math.PI * 4F), I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.movement.angular_velocity.num"), ImGuiSliderFlags.Logarithmic);
+                if (ImGuiImpl.button(drawList, apply + "##apply_angular_velocity")) {
                     gui.executeOperation(new EditOperations2D.SetAngularVelocity(angularVelocity[0]));
                 }
                 ImGui.popItemWidth();
 
-                ImGui.separator();
+                ImGuiImpl.separator(drawList);
             }
 
-            if (ImGui.button(I18n.get("physicscontrol.gui.sim.edit.module.movement.stop_movement"))) {
+            if (ImGuiImpl.button(drawList, I18n.get("physicscontrol.gui.sim.edit.module.movement.stop_movement"))) {
                 gui.executeOperation(new EditOperations2D.StopMovement());
             }
 
-            ImGui.separator();
+            ImGuiImpl.separator(drawList);
 
             // Set pos
             ImGui.alignTextToFramePadding();
             ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.movement.position"));
             ImGui.pushItemWidth(200F);
-            ImGui.inputFloat2("##position", this.position, I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.movement.position.num"), ImGuiInputTextFlags.EnterReturnsTrue);
+            ImGuiImpl.inputFloat2(drawList, "##position", this.position, I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.movement.position.num"), ImGuiInputTextFlags.EnterReturnsTrue);
             ImGui.popItemWidth();
             ImGui.sameLine();
-            if (ImGui.button(setCurrent+ "##set_current_position")) {
+            if (ImGuiImpl.button(drawList, setCurrent+ "##set_current_position")) {
                 Vec2 pos = body.getPosition();
                 this.position[0] = pos.x;
                 this.position[1] = pos.y;
             }
             ImGui.pushItemWidth(200F);
-            if (ImGui.button(apply + "##apply_position")) {
+            if (ImGuiImpl.button(drawList, apply + "##apply_position")) {
                 gui.executeOperation(new EditOperations2D.SetPos(new Vec2(this.position[0], this.position[1])));
             }
             ImGui.popItemWidth();
 
-            ImGui.separator();
+            ImGuiImpl.separator(drawList);
 
             // Set rotation
             ImGui.alignTextToFramePadding();
             ImGui.text(I18n.get("physicscontrol.gui.sim.edit.module.movement.rotation"));
             ImGui.pushItemWidth(100F);
-            ImGui.inputFloat("##rotation", this.rotation, 0.03F, 0.1F, I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.movement.rotation.num"), ImGuiInputTextFlags.EnterReturnsTrue);
+            ImGuiImpl.inputFloat(drawList, "##rotation", this.rotation, 0.03F, 0.1F, I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.movement.rotation.num"), ImGuiInputTextFlags.EnterReturnsTrue);
             ImGui.popItemWidth();
             ImGui.sameLine();
-            if (ImGui.button( setCurrent+ "##set_current_rotation")) {
+            if (ImGuiImpl.button(drawList,  setCurrent+ "##set_current_rotation")) {
                 this.rotation.set(body.getAngle());
             }
             ImGui.pushItemWidth(100F);
-            if (ImGui.button(apply + "##apply_rotation")) {
+            if (ImGuiImpl.button(drawList, apply + "##apply_rotation")) {
                 gui.executeOperation(new EditOperations2D.SetRotation(this.rotation.get()));
             }
             ImGui.popItemWidth();
@@ -639,11 +656,12 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
 
         @Override
         public void build(BodyEditGui gui, Body body, BodyUserObj obj) {
+            ImDrawList drawList = ImGuiImpl.getDrawListForImpl();
             int mask = body.getFixtureList().getFilterData().maskBits;
             for (int i=0; i<16; i++) {
                 int group = 1 << i;
                 boolean hasGroup = (mask & group) != 0;
-                if (ImGui.selectable(I18n.get(PREFIX + "layer", i + 1), hasGroup, ImGuiSelectableFlags.SpanAllColumns)) {
+                if (ImGuiImpl.selectable(drawList, I18n.get(PREFIX + "layer", i + 1), hasGroup, ImGuiSelectableFlags.SpanAllColumns)) {
                     int newGroup;
                     if (hasGroup) {
                         newGroup = mask - group;
@@ -657,7 +675,7 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
             ImGui.pushStyleColor(ImGuiCol.Button, ImColor.hslToColor(0.33F, 0.6F, 0.6F));
             ImGui.pushStyleColor(ImGuiCol.ButtonHovered, ImColor.hslToColor(0.33F, 0.7F, 0.7F));
             ImGui.pushStyleColor(ImGuiCol.ButtonActive, ImColor.hslToColor(0.33F, 0.8F, 0.8F));
-            if (ImGui.button(I18n.get(PREFIX + "select_all") + "##select_all")) {
+            if (ImGuiImpl.button(drawList, I18n.get(PREFIX + "select_all") + "##select_all")) {
                 gui.executeOperation(new EditOperations2D.SetCollisionGroup(0b1111111111111111));
             }
             ImGui.popStyleColor(3);
@@ -667,7 +685,7 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
             ImGui.pushStyleColor(ImGuiCol.Button, ImColor.hslToColor(0F, 0.6F, 0.6F));
             ImGui.pushStyleColor(ImGuiCol.ButtonHovered, ImColor.hslToColor(0F, 0.7F, 0.7F));
             ImGui.pushStyleColor(ImGuiCol.ButtonActive, ImColor.hslToColor(0F, 0.8F, 0.8F));
-            if (ImGui.button(I18n.get(PREFIX + "unselect_all") + "##unselect_all")) {
+            if (ImGuiImpl.button(drawList, I18n.get(PREFIX + "unselect_all") + "##unselect_all")) {
                 gui.executeOperation(new EditOperations2D.SetCollisionGroup(0));
             }
             ImGui.popStyleColor(3);
@@ -714,22 +732,24 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
         }
 
         private void buildRenderOptions(ColumnType type) {
+            ImDrawList drawList = ImGuiImpl.getDrawListForImpl();
+
             ImGui.tableSetColumnIndex(2);
             switch (type) {
                 case LEN:
-                    if (ImGui.checkbox("##len_check", this.drawLen))
+                    if (ImGuiImpl.checkbox(drawList, "##len_check", this.drawLen))
                         this.drawLen = !this.drawLen;
                     ImGui.sameLine();
                     ImGui.colorEdit4("##len_col", this.colLen, COLOR_FLAGS);
                     break;
                 case LEN_X:
-                    if (ImGui.checkbox("##lenx_check", this.drawLenX))
+                    if (ImGuiImpl.checkbox(drawList, "##lenx_check", this.drawLenX))
                         this.drawLenX = !this.drawLenX;
                     ImGui.sameLine();
                     ImGui.colorEdit4("##lenx_col", this.colLenX, COLOR_FLAGS);
                     break;
                 case LEN_Y:
-                    if (ImGui.checkbox("##leny_check", this.drawLenY))
+                    if (ImGuiImpl.checkbox(drawList, "##leny_check", this.drawLenY))
                         this.drawLenY = !this.drawLenY;
                     ImGui.sameLine();
                     ImGui.colorEdit4("##leny_col", this.colLenY, COLOR_FLAGS);
@@ -739,6 +759,8 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
 
         @Override
         public void build(BodyEditGui gui, Body body, BodyUserObj obj) {
+            ImDrawList drawList = ImGuiImpl.getDrawListForImpl();
+
             String numFormat = I18nHelper.localizeNumFormat("physicscontrol.gui.sim.edit.module.move_distance.num");
             if (ImGui.beginTable("move_distance_table", 3, TABLE_FLAGS)) {
                 header();
@@ -751,7 +773,7 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
                 ImGui.endTable();
             }
 
-            if (ImGui.button(I18n.get("physicscontrol.gui.sim.edit.module.move_distance.reset"))) {
+            if (ImGuiImpl.button(drawList, I18n.get("physicscontrol.gui.sim.edit.module.move_distance.reset"))) {
                 this.origin = this.bodyPos.clone();
             }
         }

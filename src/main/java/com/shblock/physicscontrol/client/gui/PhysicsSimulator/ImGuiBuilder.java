@@ -1,12 +1,10 @@
 package com.shblock.physicscontrol.client.gui.PhysicsSimulator;
 
 import com.shblock.physicscontrol.PhysicsControl;
-import imgui.ImGui;
-import imgui.ImVec2;
-import imgui.ImVec4;
-import imgui.flag.ImGuiCol;
-import imgui.flag.ImGuiMouseButton;
-import imgui.flag.ImGuiWindowFlags;
+import com.shblock.physicscontrol.client.gui.ImGuiImpl;
+import imgui.*;
+import imgui.flag.*;
+import imgui.type.ImBoolean;
 import imgui.type.ImInt;
 import imgui.type.ImString;
 import net.minecraft.client.Minecraft;
@@ -20,7 +18,10 @@ import java.util.Date;
 
 // Just because the Gui class is becoming too long
 class ImGuiBuilder {
+    private static final Minecraft MC = Minecraft.getInstance();
+
     private static final int ICON = Minecraft.getInstance().getTextureManager().getTexture(new ResourceLocation(PhysicsControl.MODID, "icons")).getId();
+    public static final ImVec4 SELECTED_COLOR = new ImVec4(200F / 255F, 210F / 255F, 255F / 255F, 1F);
 
     private static GuiPhysicsSimulator getGui() {
         return GuiPhysicsSimulator.tryGetInstance();
@@ -29,7 +30,8 @@ class ImGuiBuilder {
     protected static ToolEditGui buildToolSelectorUI() {
         ToolEditGui newToolGui = null;
 
-        ImGui.begin("ToolBar", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse);
+        ImGuiImpl.beginWithBg("ToolBar", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse);
+        ImDrawList drawList = ImGuiImpl.getDrawListForImpl();
         ImVec2 windowPos = new ImVec2();
         ImGui.getWindowPos(windowPos);
         ImVec2 windowSize = new ImVec2();
@@ -43,16 +45,23 @@ class ImGuiBuilder {
 
             if (tool.group != last_group) {
                 if (tool != Tools.values()[0]) {
-                    ImGui.separator();
+                    ImGuiImpl.separator(drawList);
                 }
             }
 
+            boolean isCurrent = getGui().getCurrentTool() == tool;
+
             ImGui.pushID(i);
-            if (getGui().getCurrentTool() == tool) {
-                ImVec4 color = ImGui.getStyle().getColor(ImGuiCol.ButtonActive);
-                ImGui.imageButton(ICON, 32, 32, tool.u, tool.v, tool.u + 0.125F, tool.v + 0.125F, 0, color.x, color.y, color.z, color.w);
-            } else {
-                if (ImGui.imageButton(ICON, 32, 32, tool.u, tool.v, tool.u + 0.125F, tool.v + 0.125F, 0)) {
+//            if (isCurrent) {
+//                ImGuiImpl.imageButton(drawList, ICON, 32, 32, tool.u, tool.v, tool.u + 0.125F, tool.v + 0.125F, 0, SELECTED_COLOR);
+//            } else {
+//                if (ImGuiImpl.imageButton(drawList, ICON, 32, 32, tool.u, tool.v, tool.u + 0.125F, tool.v + 0.125F, 0)) {
+//                    getGui().setCurrentTool(tool);
+//                }
+//            }
+            if (ImGuiImpl.selector(drawList, isCurrent, ICON, 16, 16, tool.u, tool.v, tool.u + 0.125F, tool.v + 0.125F, 10)) {
+                if (!isCurrent) {
+                    ImGuiImpl.playClickSound();
                     getGui().setCurrentTool(tool);
                 }
             }
@@ -81,7 +90,7 @@ class ImGuiBuilder {
             last_group = tool.group;
         }
 
-        ImGui.end();
+        ImGuiImpl.endWithBg();
 
         return newToolGui;
     }
@@ -127,11 +136,13 @@ class ImGuiBuilder {
     }
 
     public static void buildFileUI() {
-        ImGui.begin("###file", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.AlwaysAutoResize);
+        ImDrawList drawList = ImGuiImpl.getDrawListForImpl();
+
+        ImGuiImpl.beginWithBg("###file", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.AlwaysAutoResize);
 
         // New
         ImGui.pushID("new_button");
-        if (ImGui.imageButton(ICON, 32, 32, 0F, 0.25F, 0.125F, 0.375F)) {
+        if (ImGuiImpl.imageButton(drawList, ICON, 32, 32, 0F, 0.25F, 0.125F, 0.375F)) {
             ImGui.popID();
             clearFileMessage();
             ImGui.openPopup(I18n.get("physicscontrol.gui.sim.file.new.modal"));
@@ -143,14 +154,14 @@ class ImGuiBuilder {
         }
         if (ImGui.beginPopupModal(I18n.get("physicscontrol.gui.sim.file.new.modal"), ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking | ImGuiWindowFlags.AlwaysAutoResize)) {
             ImGui.textWrapped(I18n.get("physicscontrol.gui.sim.file.new.modal.message"));
-            ImGui.separator();
+            ImGuiImpl.separator(drawList);
             float buttonWidth = ImGui.getFontSize() * 7.0f;
-            if (ImGui.button(I18n.get("physicscontrol.gui.sim.file.new.modal.yes"), buttonWidth, 0.0f)) {
+            if (ImGuiImpl.button(drawList, I18n.get("physicscontrol.gui.sim.file.new.modal.yes"), buttonWidth, 0.0f)) {
                 GuiPhysicsSimulator.tryGetInstance().newSpace();
                 ImGui.closeCurrentPopup();
             }
             ImGui.sameLine();
-            if (ImGui.button(I18n.get("physicscontrol.gui.sim.file.new.modal.no"), buttonWidth, 0.0f)) {
+            if (ImGuiImpl.button(drawList, I18n.get("physicscontrol.gui.sim.file.new.modal.no"), buttonWidth, 0.0f)) {
                 ImGui.closeCurrentPopup();
             }
             ImGui.endPopup();
@@ -158,7 +169,7 @@ class ImGuiBuilder {
 
         // Save
         ImGui.pushID("save_button");
-        if (ImGui.imageButton(ICON, 32, 32, 0.125F, 0.25F, 0.25F, 0.375F)) {
+        if (ImGuiImpl.imageButton(drawList, ICON, 32, 32, 0.125F, 0.25F, 0.25F, 0.375F)) {
             ImGui.popID();
             clearFileMessage();
             ImGui.openPopup("##save");
@@ -171,8 +182,8 @@ class ImGuiBuilder {
         if (ImGui.beginPopup("##save")) {
             ImGui.text(I18n.get("physicscontrol.gui.sim.file.save.name"));
             ImGui.sameLine();
-            ImGui.inputText("##name", saveName);
-            if (ImGui.button(I18n.get("physicscontrol.gui.sim.file.save.button") + "##save")) {
+            ImGuiImpl.inputText(drawList, "##name", saveName);
+            if (ImGuiImpl.button(drawList, I18n.get("physicscontrol.gui.sim.file.save.button") + "##save")) {
                 fileErrorMessage = null;
                 try {
                     File file = GuiPhysicsSimulator.tryGetInstance().saveToFile(saveName.get());
@@ -192,7 +203,7 @@ class ImGuiBuilder {
 
         // Load
         ImGui.pushID("load_button");
-        if (ImGui.imageButton(ICON, 32, 32, 0.25F, 0.25F, 0.375F, 0.375F)) {
+        if (ImGuiImpl.imageButton(drawList, ICON, 32, 32, 0.25F, 0.25F, 0.375F, 0.375F)) {
             ImGui.popID();
             clearFileMessage();
             ImGui.openPopup("##load");
@@ -209,7 +220,7 @@ class ImGuiBuilder {
             }
             ImGui.listBox("##file_list", selectedFile, files);
 
-            if (ImGui.button(I18n.get("physicscontrol.gui.sim.file.load.button") + "##save")) {
+            if (ImGuiImpl.button(drawList, I18n.get("physicscontrol.gui.sim.file.load.button") + "##save")) {
                 fileErrorMessage = null;
                 if (selectedFile.get() == -1) {
                     fileErrorMessage = I18n.get("physicscontrol.gui.sim.file.load.error.did_not_select");
@@ -243,6 +254,6 @@ class ImGuiBuilder {
             ImGui.endPopup();
         }
 
-        ImGui.end();
+        ImGuiImpl.endWithBg();
     }
 }
