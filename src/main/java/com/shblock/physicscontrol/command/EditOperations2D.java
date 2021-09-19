@@ -136,22 +136,14 @@ public class EditOperations2D {
         }
 
         public SetColor(float r, float g, float b, float a) {
-            this.r = (int) (r * 256);
-            this.g = (int) (g * 256);
-            this.b = (int) (b * 256);
-            this.a = (int) (a * 256);
-            if (r > 255) {
-                r = 255;
-            }
-            if (g > 255) {
-                g = 255;
-            }
-            if (b > 255) {
-                b = 255;
-            }
-            if (a > 255) {
-                a = 255;
-            }
+            this.r = (int) (r * 255);
+            this.g = (int) (g * 255);
+            this.b = (int) (b * 255);
+            this.a = (int) (a * 255);
+            if (r > 255) r = 255;
+            if (g > 255) g = 255;
+            if (b > 255) b = 255;
+            if (a > 255) a = 255;
         }
 
         @Override

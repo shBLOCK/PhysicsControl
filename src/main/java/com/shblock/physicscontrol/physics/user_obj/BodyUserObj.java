@@ -30,6 +30,7 @@ public class BodyUserObj extends UserObjBase {
     private String name;
     private int zLevel;
     public int r, g, b, alpha;
+    private int[] lastColor = null; // last color before change the material type
 
     private Vec2[] polygonVertexCache = null;
 
@@ -156,6 +157,9 @@ public class BodyUserObj extends UserObjBase {
         nbt.putInt("g", g);
         nbt.putInt("b", b);
         nbt.putInt("alpha", alpha);
+        if (this.lastColor != null) {
+            nbt.putIntArray("last_color", this.lastColor);
+        }
         if (this.polygonVertexCache != null) {
             nbt.put("polygon_vertex_cache", NBTSerializer.toNBT(this.polygonVertexCache));
         }
@@ -174,6 +178,11 @@ public class BodyUserObj extends UserObjBase {
         this.g = nbt.getInt("g");
         this.b = nbt.getInt("b");
         this.alpha = nbt.getInt("alpha");
+        if (nbt.contains("last_color")) {
+            this.lastColor = nbt.getIntArray("last_color");
+        } else {
+            this.lastColor = null;
+        }
         if (nbt.contains("polygon_vertex_cache")) {
             this.polygonVertexCache = NBTSerializer.vec2listFromNBT(nbt.get("polygon_vertex_cache"));
         }
@@ -212,6 +221,7 @@ public class BodyUserObj extends UserObjBase {
         this.material = material;
 
         if (this.material != null) {
+            this.lastColor = new int[]{r, g, b, alpha};
             this.r = 255;
             this.g = 255;
             this.b = 255;
@@ -226,7 +236,15 @@ public class BodyUserObj extends UserObjBase {
             );
             body.resetMassData();
         } else {
-            randomColor();
+            if (this.lastColor != null) {
+                this.r = this.lastColor[0];
+                this.g = this.lastColor[1];
+                this.b = this.lastColor[2];
+                this.alpha = this.lastColor[3];
+                this.lastColor = null;
+            } else {
+                randomColor();
+            }
         }
     }
 
