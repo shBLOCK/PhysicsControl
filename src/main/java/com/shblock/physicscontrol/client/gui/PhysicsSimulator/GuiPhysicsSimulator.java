@@ -586,7 +586,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
         if (b < 0) b = 0;
         if (a < 0) a = 0;
         int col = ColorHelper.PackedColor.color(a, r, g, b);
-        drawCenteredString(matrixStack, this.font, text, x, y, col);
+        this.font.draw(matrixStack, text, (float) (x - this.font.width(text) / 2), y, col);
     }
 
     private Vec2 toSpacePos(float x, float y) {
