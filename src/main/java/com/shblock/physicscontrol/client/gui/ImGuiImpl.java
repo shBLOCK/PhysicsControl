@@ -16,6 +16,8 @@ import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 public class ImGuiImpl {
+    public static final boolean IMGUI_STYLE = true;
+
     private static final Minecraft MC = Minecraft.getInstance();
 
     private static final int IMAGE = Minecraft.getInstance().getTextureManager().getTexture(new ResourceLocation(PhysicsControl.MODID, "widgets")).getId();
@@ -34,10 +36,12 @@ public class ImGuiImpl {
     }
 
     public static void pushTransparent(int col) {
+        if (IMGUI_STYLE) return;
         ImGui.pushStyleColor(col, 0, 0, 0, 0);
     }
 
     public static void pushStylesForImpl() {
+        if (IMGUI_STYLE) return;
         pushTransparent(ImGuiCol.WindowBg);
 //        ImGui.pushStyleColor(ImGuiCol.TitleBg, 10, 10, 10, 50);
 //        ImGui.pushStyleColor(ImGuiCol.TitleBgActive, 41, 74, 122, 50);
@@ -86,11 +90,13 @@ public class ImGuiImpl {
     }
 
     public static void popStylesForImpl() {
+        if (IMGUI_STYLE) return;
         ImGui.popStyleVar(11);
         ImGui.popStyleColor(25);
     }
 
     private static int setupWindowFlagsWithBg(int flags) {
+        if (IMGUI_STYLE) return 0;
         if (ImGui.getStateStorage().getBool(0)) {
             flags |= ImGuiWindowFlags.NoResize |
                     ImGuiWindowFlags.NoDocking |
@@ -110,6 +116,7 @@ public class ImGuiImpl {
     }
 
     private static boolean iBeginWindowWithBg(String s, @Nullable ImBoolean pOpen, int flags, BiFunction<String, Integer, Boolean> windowBeginner) {
+        if (IMGUI_STYLE) return pOpen == null ? ImGui.begin(s, flags) : ImGui.begin(s, pOpen, flags);
         int orgFlags = flags;
 //        flags |= ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoBackground;
         flags |= ImGuiWindowFlags.NoTitleBar;
@@ -122,6 +129,7 @@ public class ImGuiImpl {
     private static boolean pushedClipRect = false;
 
     private static boolean setupBeginWithBg(String s, int flags, @Nullable ImBoolean pOpen) {
+        if (IMGUI_STYLE) return true;
         ImGuiStorage storage = ImGui.getStateStorage();
         if (nextWindowCollapsed) {
             storage.setBool(0, true);
@@ -274,6 +282,10 @@ public class ImGuiImpl {
 //    }
 
     private static void iEndWindowWithBg(Runnable endFunction) {
+        if (IMGUI_STYLE) {
+            endFunction.run();
+            return;
+        }
         if (pushedClipRect) {
             getDrawListForImpl().popClipRect();
             ImGui.popClipRect();
@@ -292,6 +304,7 @@ public class ImGuiImpl {
 //    }
 
     private static void iDrawButton(ImDrawList drawList, float x, float y, float width, float height, boolean hovered, boolean active, int color) {
+        if (IMGUI_STYLE) return;
         int chunkY = 2;
         if (active) {
             chunkY = 4;
@@ -328,6 +341,7 @@ public class ImGuiImpl {
     }
 
     private static boolean iButton(ImDrawList drawList, Supplier<Boolean> button, int color) {
+        if (IMGUI_STYLE) return button.get();
         boolean result = button.get();
 
         if (result)
@@ -385,6 +399,7 @@ public class ImGuiImpl {
     }
 
     private static boolean iSelector(ImDrawList drawList, boolean selected, Supplier<Boolean> button) {
+        if (IMGUI_STYLE) return button.get();
         boolean result = button.get();
 
         float x = ImGui.getItemRectMinX();
@@ -434,6 +449,7 @@ public class ImGuiImpl {
     }
 
     public static boolean checkbox(ImDrawList drawList, String s, boolean b) {
+        if (IMGUI_STYLE) return ImGui.checkbox(s, b);
         boolean result = ImGui.checkbox(s, b);
 
         if (result)
@@ -481,6 +497,7 @@ public class ImGuiImpl {
     }
     public static boolean checkbox(ImDrawList drawList, String s, ImBoolean b) {
         boolean result = checkbox(drawList, s, b.get());
+        if (IMGUI_STYLE) return result;
         if (result) {
             b.set(!b.get());
         }
@@ -489,6 +506,7 @@ public class ImGuiImpl {
     }
 
     private static boolean iSelectable(ImDrawList drawList, Supplier<Boolean> selectable, boolean state) {
+        if (IMGUI_STYLE) return selectable.get();
         ImGui.pushStyleColor(ImGuiCol.Text, 200, 200, 200, 255);
         boolean result = selectable.get();
         ImGui.popStyleColor(1);
@@ -546,6 +564,7 @@ public class ImGuiImpl {
 
     public static void separator(ImDrawList drawList) {
         ImGui.separator();
+        if (IMGUI_STYLE) return;
         ImGuiUtil.resizeableImage64x(
                 drawList, IMAGE, IMG_SIZE_64x,
                 ImGui.getItemRectMinX() + ImGuiUtil.getScale(),
@@ -558,6 +577,7 @@ public class ImGuiImpl {
     }
 
     private static void drawSeparator(ImDrawList drawList, float x, float y, float width, float height) {
+        if (IMGUI_STYLE) return;
         ImGuiUtil.resizeableImage64x(
                 drawList, IMAGE, IMG_SIZE_64x,
                 x + ImGuiUtil.getScale(), y, width - ImGuiUtil.getScale() * 2, height,
@@ -573,6 +593,7 @@ public class ImGuiImpl {
     }
 
     public static boolean collapsingHeader(ImDrawList drawList, String s) {
+        if (IMGUI_STYLE) return ImGui.collapsingHeader(s, ImGuiTreeNodeFlags.SpanFullWidth);
         ImGui.pushStyleVar(ImGuiStyleVar.FramePadding, ImGui.getStyle().getFramePaddingX(), 8F);
         ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, ImGui.getStyle().getItemSpacingX(), ImGuiUtil.getScale());
         ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, 0F, ImGui.getStyle().getWindowPaddingY());
@@ -601,6 +622,7 @@ public class ImGuiImpl {
     }
 
     private static boolean iSlider(ImDrawList drawList, Supplier<Boolean> slider) {
+        if (IMGUI_STYLE) return slider.get();
         ImGui.pushStyleColor(ImGuiCol.Text, 200, 200, 200, 255);
         boolean result = slider.get();
         ImGui.popStyleColor(1);
@@ -668,6 +690,7 @@ public class ImGuiImpl {
     }
 
     private static void iDrawMultipartWidget(ImDrawList drawList, float x, float y, float width, float height, int parts, int chunkX, int chunkY, int edge) {
+        if (IMGUI_STYLE) return;
         float innerSpacing = ImGui.getStyle().getItemInnerSpacingX();
         float prePartWidth = (width - innerSpacing * parts) / parts;
         float currentX = x;
@@ -686,6 +709,7 @@ public class ImGuiImpl {
     }
 
     private static boolean iInput(ImDrawList drawList, Supplier<Boolean> widget, int parts, boolean hasButton, int flags) {
+        if (IMGUI_STYLE) return widget.get();
         ImGui.pushStyleColor(ImGuiCol.Text, 200, 200, 200, 255);
         boolean result = widget.get();
         ImGui.popStyleColor(1);
@@ -793,6 +817,7 @@ public class ImGuiImpl {
     }
 
     private static boolean iDrag(ImDrawList drawList, Supplier<Boolean> widget, int parts) {
+        if (IMGUI_STYLE) return widget.get();
         ImGui.pushStyleColor(ImGuiCol.Text, 200, 200, 200, 255);
         boolean result = widget.get();
         ImGui.popStyleColor(1);

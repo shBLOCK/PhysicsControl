@@ -18,6 +18,9 @@ import org.jbox2d.collision.Collision;
 import org.jbox2d.collision.shapes.Shape;
 import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.*;
+import org.jbox2d.dynamics.joints.Joint;
+import org.jbox2d.dynamics.joints.JointDef;
+import org.jbox2d.dynamics.joints.JointType;
 import org.jbox2d.particle.ParticleDef;
 import org.jbox2d.particle.ParticleGroup;
 import org.jbox2d.particle.ParticleGroupDef;
@@ -252,6 +255,25 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
         for (Body body : this.selectedBodies) {
             unfreezeBody(body);
         }
+    }
+
+    public Joint addJoint(JointDef def) {
+        return getSpace().createJoint(def);
+    }
+
+    public void deleteJoint(Joint joint) {
+        getSpace().destroyJoint(joint);
+    }
+
+    public Joint createBearingAt(Vec2 worldPos, float size) {
+        List<Body> bodies = pointTestSorted(worldPos);
+        if (bodies.isEmpty())
+            return null;
+        JointDef def = new JointDef(JointType.REVOLUTE);
+        def.bodyA = bodies.get(0);
+        def.bodyB = bodies.size() == 1 ? null : bodies.get(1);
+        def.userData = size;
+        return addJoint(def);
     }
 
     public ParticleGroup getGroupFromId(int id) {

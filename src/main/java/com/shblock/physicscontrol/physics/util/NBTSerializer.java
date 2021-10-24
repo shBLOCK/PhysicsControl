@@ -1,8 +1,10 @@
 package com.shblock.physicscontrol.physics.util;
 
+import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
 import com.shblock.physicscontrol.physics.user_obj.BodyUserObj;
 import com.shblock.physicscontrol.physics.user_obj.ElasticGroupUserObj;
 import com.shblock.physicscontrol.physics.user_obj.ElasticParticleUserObj;
+import com.shblock.physicscontrol.physics.user_obj.UserObjBase;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.FloatNBT;
 import net.minecraft.nbt.INBT;
@@ -14,6 +16,7 @@ import org.jbox2d.collision.shapes.Shape;
 import org.jbox2d.collision.shapes.ShapeType;
 import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.*;
+import org.jbox2d.dynamics.joints.*;
 import org.jbox2d.particle.*;
 
 import javax.annotation.Nullable;
@@ -82,7 +85,127 @@ public class NBTSerializer {
         return filter;
     }
 
-    //TODO: joint
+    public static CompoundNBT toNBT(RevoluteJointDef def) {
+        CompoundNBT nbt = new CompoundNBT();
+
+        nbt.putInt("bodyA", ((UserObjBase) def.bodyA.getUserData()).getId());
+        if (def.bodyB != null) {
+            nbt.putInt("bodyB", ((UserObjBase) def.bodyB.getUserData()).getId());
+        }
+        nbt.put("anchorA", toNBT(def.localAnchorA));
+        nbt.put("anchorB", toNBT(def.localAnchorB));
+        nbt.putFloat("size", (Float) def.userData);
+
+        return nbt;
+    }
+
+    public static RevoluteJointDef bearingDefFromNBT(CompoundNBT nbt) {
+        RevoluteJointDef def = new RevoluteJointDef();
+
+        World world = InteractivePhysicsSimulator2D.getInstance().getSpace();
+        def.bodyA = findBodyById(world, nbt.getInt("bodyA"));
+        if (nbt.contains("bodyB")) {
+            def.bodyB = findBodyById(world, nbt.getInt("bodyB"));
+        }
+        def.localAnchorA = vec2FromNBT(nbt.getCompound("anchorA"));
+        def.localAnchorB = vec2FromNBT(nbt.getCompound("anchorB"));
+        def.userData = nbt.getFloat("size");
+
+        return def;
+    }
+
+    public static CompoundNBT toNBT(Joint joint) {
+        CompoundNBT nbt = new CompoundNBT();
+
+        nbt.putInt("type", joint.getType().ordinal());
+        nbt.putBoolean("collide_connected", joint.getCollideConnected());
+        nbt.putInt("bodyA", ((UserObjBase) joint.getBodyA().getUserData()).getId());
+        nbt.putInt("bodyB", ((UserObjBase) joint.getBodyB().getUserData()).getId());
+//        Vec2 anc = new Vec2();
+//        joint.getAnchorA(anc);
+//        nbt.put("ancA", toNBT(anc));
+//        anc = new Vec2();
+//        joint.getAnchorB(anc);
+//        nbt.put("ancA", toNBT(anc));
+
+        switch (joint.getType()) {
+            case REVOLUTE:
+                RevoluteJoint rev = (RevoluteJoint) joint;
+                nbt.put("local_anchor_A", toNBT(rev.getLocalAnchorA()));
+                nbt.put("local_anchor_B", toNBT(rev.getLocalAnchorB()));
+                nbt.putFloat("size", (Float) rev.getUserData());
+                break;
+            default:
+                assert false;
+        }
+
+        return nbt;
+    }
+
+    private static Body findBodyById(World world, int id) {
+        Body body = world.getBodyList();
+        while (body != null) {
+            UserObjBase obj = (UserObjBase) body.getUserData();
+            if (obj.getId() == id) {
+                return body;
+            }
+            body = body.m_next;
+        }
+        return null;
+    }
+
+    public static Joint jointFromNBT(CompoundNBT nbt, World world) {
+        JointDef def = new JointDef(JointType.values()[nbt.getInt("type")]);
+        switch (JointType.values()[nbt.getInt("type")]) {
+            case REVOLUTE:
+                def = new RevoluteJointDef();
+                break;
+            default:
+                assert false;
+        }
+
+//        JointDef def = new JointDef(JointType.values()[nbt.getInt("type")]);
+        def.collideConnected = nbt.getBoolean("collide_connected");
+        def.bodyA = findBodyById(world, nbt.getInt("bodyA"));
+        def.bodyB = findBodyById(world, nbt.getInt("bodyB"));
+
+        Joint joint = world.createJoint(def);
+
+        switch (def.type) {
+            case REVOLUTE:
+                RevoluteJoint rev = (RevoluteJoint) joint;
+                rev.getLocalAnchorA().set(vec2FromNBT(nbt.getCompound("local_anchor_A")));
+                rev.getLocalAnchorB().set(vec2FromNBT(nbt.getCompound("local_anchor_B")));
+                rev.setUserData(nbt.getFloat("size"));
+                break;
+            default:
+                assert false;
+        }
+
+        return joint;
+    }
+
+    public static CompoundNBT serializeAllJoint(World world) {
+        CompoundNBT nbt = new CompoundNBT();
+        ListNBT list = new ListNBT();
+
+        Joint joint = world.getJointList();
+        while (joint != null) {
+            list.add(toNBT(joint));
+            joint = joint.getNext();
+        }
+
+        nbt.put("list", list);
+        return nbt;
+    }
+
+    public static void deserializeAllJoint(CompoundNBT nbt, World world) {
+        ListNBT list = nbt.getList("list", Constants.NBT.TAG_COMPOUND);
+        for (int i=0; i<list.size();i++) {
+            CompoundNBT compound = list.getCompound(i);
+            jointFromNBT(compound, world);
+        }
+    }
 
     public static CompoundNBT toNBT(Shape shape) {
         CompoundNBT nbt = new CompoundNBT();
@@ -504,6 +627,8 @@ public class NBTSerializer {
 
         nbt.put("body_list", bodyListToNBT(space.getBodyList()));
 
+        nbt.put("joints", serializeAllJoint(space));
+
         nbt.put("particles", saveParticlesInGroup(space, null));
 
         ListNBT groupsNBT = new ListNBT();
@@ -538,6 +663,8 @@ public class NBTSerializer {
             Body result = space.createBody(defs[i]);
             applyFixture(result, list.getCompound(i));
         }
+
+        deserializeAllJoint(nbt.getCompound("joints"), space);
 
         createAllParticles(space, getParticleDefList(nbt.getCompound("particles")));
 

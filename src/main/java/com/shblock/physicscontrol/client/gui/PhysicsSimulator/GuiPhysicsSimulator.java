@@ -1,6 +1,7 @@
 package com.shblock.physicscontrol.client.gui.PhysicsSimulator;
 
 import com.mojang.blaze3d.matrix.MatrixStack;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.shblock.physicscontrol.PhysicsControl;
 import com.shblock.physicscontrol.client.I18nHelper;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
@@ -15,11 +16,15 @@ import com.shblock.physicscontrol.physics.util.*;
 import imgui.ImGui;
 import net.minecraft.client.KeyboardListener;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.BufferBuilder;
+import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.JsonToNBT;
 import net.minecraft.nbt.ListNBT;
 import net.minecraft.util.ColorHelper;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.math.vector.Quaternion;
 import net.minecraft.util.text.StringTextComponent;
@@ -32,9 +37,12 @@ import org.jbox2d.collision.shapes.PolygonShape;
 import org.jbox2d.collision.shapes.Shape;
 import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.*;
+import org.jbox2d.dynamics.joints.Joint;
 import org.jbox2d.dynamics.joints.MouseJoint;
 import org.jbox2d.dynamics.joints.MouseJointDef;
+import org.jbox2d.dynamics.joints.RevoluteJoint;
 import org.jbox2d.particle.ParticleGroup;
+import org.lwjgl.opengl.GL11;
 
 import java.io.File;
 import java.io.IOException;
@@ -251,6 +259,21 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                 }
         );
 
+        Joint joint = getSimulator().getSpace().getJointList();
+        while (joint != null) {
+            if (joint instanceof RevoluteJoint) {
+                RevoluteJoint bearing = (RevoluteJoint) joint;
+                renderBearing(
+                        matrixStack,
+                        bearing.getBodyA().getWorldPoint(bearing.getLocalAnchorA()),
+                        (Float) bearing.getUserData(),
+                        bearing.getJointAngle()
+                );
+            }
+
+            joint = joint.getNext();
+        }
+
         if (space.getParticleGroupList() != null) {
             ParticleGroup group = space.getParticleGroupList();
             while (group != null) {
@@ -287,6 +310,36 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
             pos.y = -pos.y;
             this.particleToolGui.render(matrixStack, pos, this.config);
         }
+
+        matrixStack.popPose();
+    }
+
+    private static final ResourceLocation ICON_IMG = new ResourceLocation(PhysicsControl.MODID, "icons");
+
+    private void renderBearing(MatrixStack matrixStack, Vec2 pos, float size, float rotation) {
+        matrixStack.pushPose();
+
+//        matrixStack.scale(size, size, 1F);
+        matrixStack.translate(pos.x, -pos.y, 0F);
+        matrixStack.mulPose(QuaternionUtil.setZRadians(rotation));
+
+        RenderSystem.disableDepthTest();
+        RenderSystem.enableTexture();
+        Minecraft.getInstance().getTextureManager().bind(ICON_IMG);
+
+        Tessellator tessellator = Tessellator.getInstance();
+        BufferBuilder builder = tessellator.getBuilder();
+        Matrix4f matrix = matrixStack.last().pose();
+        builder.begin(GL11.GL_QUADS, DefaultVertexFormats.POSITION_COLOR_TEX);
+//        size = 1F;
+        builder.vertex(matrix, -size, -size, 0F).color(1F, 1F, 1F, 1F).uv(0F, 0.5F).endVertex();
+        builder.vertex(matrix, -size, size, 0F).color(1F, 1F, 1F, 1F).uv(0F, 0.625F).endVertex();
+        builder.vertex(matrix, size, size, 0F).color(1F, 1F, 1F, 1F).uv(0.125F, 0.625F).endVertex();
+        builder.vertex(matrix, size, -size, 0F).color(1F, 1F, 1F, 1F).uv(0.125F, 0.5F).endVertex();
+        tessellator.end();
+
+        RenderSystem.disableTexture();
+        RenderSystem.enableDepthTest();
 
         matrixStack.popPose();
     }
@@ -876,6 +929,13 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
 
         switch (button) {
             case 0:
+                if (this.currentTool == Tools.BEARING) {
+                    List<Body> bodies = getSimulator().pointTestSorted(toSpacePos(mouseX, mouseY));
+                    if (bodies.size() >= 2) {
+                        getSimulator().executeCommand(new CommandPlaceBearing(bodies.get(0), bodies.size() > 1 ? bodies.get(1) : null, toSpacePos(mouseX, mouseY), 10F / this.globalScale));
+                        return true;
+                    }
+                }
                 switch (this.state) {
                     case NONE:
                         List<Body> results = getSimulator().pointTestSorted(toSpacePos(mouseX, mouseY));
@@ -948,6 +1008,24 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                 }
                 return false;
             case 1:
+                if (this.currentTool == Tools.BEARING) {
+                    Vec2 mousePos = toSpacePos(mouseX, mouseY);
+                    Joint joint = getSimulator().getSpace().getJointList();
+                    int i=0;
+                    while (joint != null) {
+                        if (joint instanceof RevoluteJoint) {
+                            Vec2 jointPos = ((RevoluteJoint) joint).getLocalAnchorA();
+                            jointPos = joint.getBodyA().getWorldPoint(jointPos);
+                            if (mousePos.sub(jointPos).length() < (Float) joint.getUserData()) {
+                                getSimulator().executeCommand(new CommandDeleteBearing(i));
+                                return true;
+                            }
+                        }
+
+                        joint = joint.getNext();
+                        i++;
+                    }
+                }
                 switch (this.state) {
                     case NONE:
                         List<Body> results = getSimulator().pointTestSorted(toSpacePos(mouseX, mouseY));
@@ -1301,7 +1379,8 @@ enum Tools {
     PARTICLE(0, 3, "physicscontrol.gui.sim.tool.particle", 2),
     DRAG(0, 1, "physicscontrol.gui.sim.tool.drag", 3),
     ROTATE(1, 1, "physicscontrol.gui.sim.tool.rotate", 3),
-    GIVE_FORCE(2, 1, "physicscontrol.gui.sim.tool.give_force", 3);
+    GIVE_FORCE(2, 1, "physicscontrol.gui.sim.tool.give_force", 3),
+    BEARING(0, 4, "physicscontrol.gui.sim.tool.bearing", 4);
 
     public float u, v;
     public String localizeName;
