@@ -13,9 +13,13 @@ import net.minecraftforge.common.util.INBTSerializable;
 import org.jbox2d.common.Vec2;
 import org.jbox2d.dynamics.Body;
 import org.jbox2d.dynamics.BodyType;
+import org.jbox2d.dynamics.World;
+import org.jbox2d.dynamics.contacts.Contact;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class EditOperations2D {
@@ -292,6 +296,27 @@ public class EditOperations2D {
         }
     }
 
+    public static void updateContact(Body body) {
+        World world = InteractivePhysicsSimulator2D.getInstance().getSpace();
+
+        List<Contact> toRemove = new ArrayList<>();
+
+        Contact list = world.getContactList();
+        while (list != null) {
+            if (list.getFixtureA().getBody() == body || list.getFixtureB().getBody() == body) {
+                toRemove.add(list);
+            }
+            list = list.getNext();
+        }
+
+        for (Contact contact : toRemove) {
+            world.getContactManager().destroy(contact);
+        }
+
+        body.setActive(true);
+        body.setAwake(true);
+    }
+
     public static class SetFriction extends EditOperationBase {
         private float friction;
 
@@ -304,6 +329,7 @@ public class EditOperations2D {
         @Override
         public void execute(Body body, BodyUserObj obj) {
             BodyHelper.forEachFixture(body, fixture -> fixture.setFriction(this.friction));
+            updateContact(body);
         }
 
         @Override
@@ -346,6 +372,7 @@ public class EditOperations2D {
         @Override
         public void execute(Body body, BodyUserObj obj) {
             body.getFixtureList().setRestitution(this.restitution);
+            updateContact(body);
         }
 
         @Override
