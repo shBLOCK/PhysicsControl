@@ -1,0 +1,75 @@
+2019-06-28 11:17:28   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 11:17:32   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 11:17:46   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 11:17:51   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 11:18:16   F:\test\wifi-udp-20190628\temp\UpdateFileList1.txt
+2019-06-28 11:18:19   F:\test\wifi-udp-20190628\temp\UpdateFileList1.txt
+2019-06-28 11:18:27   F:\test\wifi-udp-20190628\temp\UpdateFileList1.txt
+2019-06-28 11:22:12   F:\test\wifi-udp-20190628\temp\UpdateFileList1.txt
+2019-06-28 11:22:17   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 11:22:20   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 11:22:30   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 11:33:27   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 11:33:30   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 11:33:36   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 11:45:21   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 11:45:26   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 11:45:52   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 11:47:39   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 11:47:53   F:\test\wifi-udp-20190628\temp\UpdateFileList1.txt
+2019-06-28 11:47:57   F:\test\wifi-udp-20190628\temp\UpdateFileList1.txt
+2019-06-28 11:48:08   F:\test\wifi-udp-20190628\temp\UpdateFileList1.txt
+2019-06-28 11:48:22   F:\test\wifi-udp-20190628\temp\UpdateFileList1.txt
+2019-06-28 11:48:37   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 11:49:10   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 11:49:13   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 12:04:53   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 12:05:13   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 12:05:18   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 12:05:30   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 12:05:42   F:\test\wifi-udp-20190628\temp\UpdateFileList1.txt
+2019-06-28 12:05:51   F:\test\wifi-udp-20190628\temp\UpdateFileList1.txt
+2019-06-28 12:06:02   F:\test\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 13:37:10   D:\WORK\SOFTWARE\WT901WIFI\wifi-udp-20190628\temp\UpdateFileList0.txt
+2019-06-28 13:37:20   D:\WORK\SOFTWARE\WT901WIFI\wifi-udp-20190628\temp\UpdateFileList1.txt
+2019-06-29 10:40:17   D:\WORK\SOFTWARE\WT901WIFI\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2019-06-30 11:05:41   D:\WORK\SOFTWARE\WT901WIFI\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2019-07-05 19:38:27   D:\WORK\SOFTWARE\WT901WIFI\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2019-07-05 19:39:32   D:\WORK\SOFTWARE\WT901WIFI\WIFI software-UDP mode pairing network\temp\UpdateFileList0.txt
+2019-07-05 19:39:34   D:\WORK\SOFTWARE\WT901WIFI\WIFI software-UDP mode pairing network\temp\UpdateFileList0.txt
+2019-07-05 19:39:42   D:\WORK\SOFTWARE\WT901WIFI\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2019-07-11 17:50:36   C:\Users\Administrator\Desktop\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2019-07-11 17:50:38   C:\Users\Administrator\Desktop\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2019-09-02 14:17:50   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2019-10-10 21:09:02   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2019-10-11 18:01:31   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2019-12-16 21:51:06   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2019-12-16 21:51:10   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2019-12-17 14:54:20   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2019-12-28 17:53:02   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2020-03-05 16:58:17   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2020-03-07 14:46:02   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2020-03-07 15:20:25   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2020-03-09 16:06:38   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2020-04-01 09:26:15   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2020-04-01 09:26:20   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2020-04-09 11:46:54   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2020-04-10 10:01:52   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2020-04-14 09:56:12   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2020-05-09 18:10:57   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2020-08-19 14:34:44   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2020-08-19 14:34:47   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2020-08-19 14:39:51   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2020-08-19 15:23:31   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList0.txt
+2020-08-19 15:23:33   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList0.txt
+2020-08-19 15:23:41   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2020-08-19 15:23:59   D:\360MoveData\Users\Administrator\Desktop\PC Software\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2020-08-19 15:55:18   C:\Users\HYJ\Downloads\WIFI software-UDP mode pairing network(2)\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2020-08-19 16:17:10   C:\Users\HYJ\Downloads\WIFI software-UDP mode pairing network(2)\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2020-12-16 10:29:04   E:\产品资料\WT901WIFI\WT901WIFI\上位机\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2020-12-16 10:29:07   E:\产品资料\WT901WIFI\WT901WIFI\上位机\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2021-01-12 17:48:47   E:\产品资料\WT901WIFI\WT901WIFI\上位机\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2021-03-06 13:40:15   D:\Users\吴大满\上位机\WI901WIFI上位机1610444955379\上位机\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2022-02-16 11:15:51   F:\motion sensor\上位机\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2022-02-16 11:15:55   F:\motion sensor\上位机\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt
+2022-02-16 21:24:58   F:\motion sensor\上位机\WIFI software-UDP mode pairing network\temp\UpdateFileList1.txt

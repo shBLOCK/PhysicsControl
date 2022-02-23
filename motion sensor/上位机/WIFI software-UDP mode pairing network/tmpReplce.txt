@@ -1,0 +1,8 @@
+F:\motion sensor\上位机\WIFI software-UDP mode pairing network\temp\WitMotion-Udp.exe,F:\motion sensor\上位机\WIFI software-UDP mode pairing network\WitMotion-Udp.exe
+F:\motion sensor\上位机\WIFI software-UDP mode pairing network\temp\configColumn.ini,F:\motion sensor\上位机\WIFI software-UDP mode pairing network\configColumn.ini
+F:\motion sensor\上位机\WIFI software-UDP mode pairing network\temp\configEN.ini,F:\motion sensor\上位机\WIFI software-UDP mode pairing network\configEN.ini
+F:\motion sensor\上位机\WIFI software-UDP mode pairing network\temp\byn\WitMotion-Udp.resources.dll,F:\motion sensor\上位机\WIFI software-UDP mode pairing network\byn\WitMotion-Udp.resources.dll
+F:\motion sensor\上位机\WIFI software-UDP mode pairing network\temp\byn-ER\WitMotion-Udp.resources.dll,F:\motion sensor\上位机\WIFI software-UDP mode pairing network\byn-ER\WitMotion-Udp.resources.dll
+F:\motion sensor\上位机\WIFI software-UDP mode pairing network\temp\zh-CN\WitMotion-Udp.resources.dll,F:\motion sensor\上位机\WIFI software-UDP mode pairing network\zh-CN\WitMotion-Udp.resources.dll
+F:\motion sensor\上位机\WIFI software-UDP mode pairing network\temp\ISerialPort.dll,F:\motion sensor\上位机\WIFI software-UDP mode pairing network\ISerialPort.dll
+F:\motion sensor\上位机\WIFI software-UDP mode pairing network\temp\ssy-ER\WitMotion-Udp.resources.dll,F:\motion sensor\上位机\WIFI software-UDP mode pairing network\ssy-ER\WitMotion-Udp.resources.dll

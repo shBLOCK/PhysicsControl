@@ -1,0 +1,8 @@
+F:\上位机\wifi-上位机\temp\WitMotion-Udp.exe,F:\上位机\wifi-上位机\WitMotion-Udp.exe
+F:\上位机\wifi-上位机\temp\configColumn.ini,F:\上位机\wifi-上位机\configColumn.ini
+F:\上位机\wifi-上位机\temp\configEN.ini,F:\上位机\wifi-上位机\configEN.ini
+F:\上位机\wifi-上位机\temp\byn\WitMotion-Udp.resources.dll,F:\上位机\wifi-上位机\byn\WitMotion-Udp.resources.dll
+F:\上位机\wifi-上位机\temp\byn-ER\WitMotion-Udp.resources.dll,F:\上位机\wifi-上位机\byn-ER\WitMotion-Udp.resources.dll
+F:\上位机\wifi-上位机\temp\zh-CN\WitMotion-Udp.resources.dll,F:\上位机\wifi-上位机\zh-CN\WitMotion-Udp.resources.dll
+F:\上位机\wifi-上位机\temp\ISerialPort.dll,F:\上位机\wifi-上位机\ISerialPort.dll
+F:\上位机\wifi-上位机\temp\ssy-ER\WitMotion-Udp.resources.dll,F:\上位机\wifi-上位机\ssy-ER\WitMotion-Udp.resources.dll
