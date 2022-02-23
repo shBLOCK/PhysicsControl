@@ -1,6 +1,7 @@
 package com.shblock.physicscontrol.physics.user_obj;
 
 import com.shblock.physicscontrol.Config;
+import com.shblock.physicscontrol.motionsensor.MotionSensorInstance;
 import com.shblock.physicscontrol.physics.material.Material;
 import com.shblock.physicscontrol.physics.util.BodyHelper;
 import com.shblock.physicscontrol.physics.util.NBTSerializer;
@@ -35,6 +36,8 @@ public class BodyUserObj extends UserObjBase {
     private Vec2[] polygonVertexCache = null;
 
     private Material material;
+
+    private MotionSensorInstance boundMotionSensor;
 
     /**
      * Dummy constructor for fromNBT, DON'T USE THIS!
@@ -284,5 +287,13 @@ public class BodyUserObj extends UserObjBase {
         if (this.material != null) {
             Minecraft.getInstance().getSoundManager().play(SimpleSound.forUI(new SoundEvent(this.material.sound), SOUND_RANDOMIZER.nextFloat() + 0.5F, volume)); //TODO: random pitch, volume based on the collision force?
         }
+    }
+
+    public void setMotionSensor(MotionSensorInstance motionSensor) {
+        this.boundMotionSensor = motionSensor;
+    }
+
+    public MotionSensorInstance getMotionSensor() {
+        return boundMotionSensor;
     }
 }

@@ -18,7 +18,13 @@ public class Config {
     private static final List<? extends String> DEFAULT_MATERIALS = Lists.newArrayList(
             "stone, textures/block/stone, block.stone.break, 2.4, 0.9, 0.2",
             "cobblestone, textures/block/cobblestone, block.stone.break, 2.4, 0.9, 0.2",
-            "slime_block, textures/block/slime_block, block.slime_block.hit, 1, 1, 0.95"
+            "slime_block, textures/block/slime_block, block.slime_block.hit, 1, 1, 0.95",
+            "gold, textures/block/gold_block, block.metal.break, 7, 0.9, 0.2",
+            "iron, textures/block/iron_block, block.metal.break, 6, 0.9, 0.2",
+            "redstone, textures/block/redstone_block, block.metal.break, 5, 0.9, 0.2",
+            "diamond, textures/block/diamond_block, block.metal.break, 8, 0.9, 0.2",
+            "ice, textures/block/packed_ice, block.glass.break, 2.4, 0.1, 0.2",
+            "glass, textures/block/glass, block.glass.break, 1.5, 0.2, 0.2"
     );
 
     static {

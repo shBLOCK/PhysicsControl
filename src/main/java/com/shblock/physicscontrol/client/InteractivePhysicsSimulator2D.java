@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import com.shblock.physicscontrol.PhysicsControl;
 import com.shblock.physicscontrol.client.gui.PhysicsSimulator.GuiSimulatorContactListener;
 import com.shblock.physicscontrol.command.*;
+import com.shblock.physicscontrol.motionsensor.MotionSensorInstance;
 import com.shblock.physicscontrol.physics.user_obj.BodyUserObj;
 import com.shblock.physicscontrol.physics.user_obj.ElasticGroupUserObj;
 import com.shblock.physicscontrol.physics.user_obj.UserObjBase;
@@ -85,7 +86,28 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
         }
     }
 
+    private void syncMotionSensorData() {
+        forEachBody(body -> {
+            BodyUserObj obj = (BodyUserObj) body.getUserData();
+            MotionSensorInstance sensor = obj.getMotionSensor();
+            if (sensor != null) {
+                body.setAwake(true);
+                body.setActive(true);
+
+                Vec2 spdVec = new Vec2(sensor.spdX, sensor.spdZ);
+                if (body.getType() == BodyType.DYNAMIC) {
+                    body.setLinearVelocity(spdVec);
+                    body.setAngularVelocity((float) Math.toRadians(sensor.angSpdX));
+                } else {
+                    setBodyPosLocal(body, body.getPosition().add(spdVec));
+                    body.setTransform(body.getPosition(), (float) Math.toRadians(sensor.angleX));
+                }
+            }
+        });
+    }
+
     public void step(float time) {
+        syncMotionSensorData();
         this.space.step(time, this.velocityIterations, this.positionIterations);
         update();
     }

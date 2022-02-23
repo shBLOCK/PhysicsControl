@@ -8,12 +8,12 @@ import com.shblock.physicscontrol.client.I18nHelper;
 import com.shblock.physicscontrol.client.InteractivePhysicsSimulator2D;
 import com.shblock.physicscontrol.client.gui.GlobalImGuiRenderer;
 import com.shblock.physicscontrol.client.gui.ImGuiImpl;
-import com.shblock.physicscontrol.client.gui.ImGuiUtil;
 import com.shblock.physicscontrol.client.gui.RenderHelper;
 import com.shblock.physicscontrol.command.CommandBodyToElastic;
 import com.shblock.physicscontrol.command.CommandDeleteBodies;
 import com.shblock.physicscontrol.command.CommandEditBodyProperty;
 import com.shblock.physicscontrol.command.EditOperations2D;
+import com.shblock.physicscontrol.motionsensor.MotionSensorHandler;
 import com.shblock.physicscontrol.physics.material.Material;
 import com.shblock.physicscontrol.physics.user_obj.BodyUserObj;
 import com.shblock.physicscontrol.physics.util.NBTSerializer;
@@ -186,9 +186,10 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
         this.mainWindowModules.add(new ModuleCollision());
         this.mainWindowModules.add(new ModuleMoveDistance());
         this.mainWindowModules.add(new ModulePlot());
+        this.mainWindowModules.add(new ModuleMotionSensor());
     }
 
-    public int getbodyId() {
+    public int getBodyId() {
         return bodyId;
     }
 
@@ -220,6 +221,7 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
         register(ModuleCollision.class);
         register(ModuleMoveDistance.class);
         register(ModulePlot.class);
+        register(ModuleMotionSensor.class);
     }
 
     @Override
@@ -918,6 +920,28 @@ public class BodyEditGui implements INBTSerializable<CompoundNBT> {
         @Override
         public String getId() {
             return "plot";
+        }
+    }
+
+    private static class ModuleMotionSensor extends Module {
+        public ModuleMotionSensor() {}
+
+        @Override
+        public void build(BodyEditGui gui, Body body, BodyUserObj obj) {
+            boolean hadSensor = obj.getMotionSensor() != null;
+            if (ImGui.button(hadSensor ? "unbind" : "bind")) {
+                if (hadSensor) {
+                    MotionSensorHandler.removeSensorInstance(obj.getMotionSensor().deviceId);
+                    body.setGravityScale(1);
+                }
+                obj.setMotionSensor(hadSensor ? null : MotionSensorHandler.addSensorInstance("WT5300003667"));
+                body.setGravityScale(0);
+            }
+        }
+
+        @Override
+        public String getId() {
+            return "motion_sensor";
         }
     }
 }

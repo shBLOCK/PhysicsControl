@@ -487,7 +487,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
     public void buildImGui() {
         ImGuiUtil.syncScaleWithMC();
 
-        ImGui.showDemoWindow();
+//        ImGui.showDemoWindow();
 
         ToolEditGui newGui = ImGuiBuilder.buildToolSelectorUI();
         if (this.toolEditGui == null && newGui != null) {
@@ -1036,7 +1036,7 @@ public class GuiPhysicsSimulator extends ImGuiBase implements INBTSerializable<C
                         getSimulator().unselectAll();
                         getSimulator().select(results.get(0));
                         for (BodyEditGui gui : this.bodyEditGuis) {
-                            if (gui.getbodyId() == pcoId) {
+                            if (gui.getBodyId() == pcoId) {
                                 gui.reopenMainWindow();
                                 return true;
                             }
