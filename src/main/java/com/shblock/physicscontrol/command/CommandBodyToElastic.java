@@ -53,6 +53,7 @@ public class CommandBodyToElastic extends PhysicsCommandBase {
         groupDef.flags = particleFlags;
         groupDef.color = ParticleHelper.particleColorFromFloat4(obj.r, obj.g, obj.b, obj.alpha);
         groupDef.destroyAutomatically = true;
+        groupDef.userData = new ElasticGroupUserObj(simulator.nextGroupId(), ((BodyUserObj) body.getUserData()).getName());
 
         AtomicReference<ParticleGroup> groupReference = new AtomicReference<>();
         BodyHelper.forEachFixture(body, fixture -> {
