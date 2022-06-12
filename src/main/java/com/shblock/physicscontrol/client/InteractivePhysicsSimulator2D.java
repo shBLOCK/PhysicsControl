@@ -96,11 +96,11 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
 
                 Vec2 spdVec = new Vec2(sensor.spdX, sensor.spdZ);
                 if (body.getType() == BodyType.DYNAMIC) {
-                    body.setLinearVelocity(spdVec);
+//                    body.setLinearVelocity(spdVec);
                     body.setAngularVelocity((float) Math.toRadians(sensor.angSpdX));
                 } else {
-                    setBodyPosLocal(body, body.getPosition().add(spdVec));
-                    body.setTransform(body.getPosition(), (float) Math.toRadians(sensor.angleX));
+//                    setBodyPosLocal(body, body.getPosition().add(spdVec));
+                    body.setTransform(body.getPosition(), (float) Math.toRadians(-sensor.angleX));
                 }
             }
         });
@@ -342,7 +342,7 @@ public class InteractivePhysicsSimulator2D implements INBTSerializable<CompoundN
     public ParticleGroup addParticleGroupLocal(ParticleGroupDef def) {
         def.destroyAutomatically = true; // Other wise we can't delete a particle group.
         ParticleGroup group = getSpace().createParticleGroup(def);
-        assert !(group.getUserData() instanceof UserObjBase);
+        assert group.getUserData() instanceof UserObjBase;
         this.idGroupMap.put(((UserObjBase) group.getUserData()).getId(), group);
         return group;
     }
